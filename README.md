@@ -1,67 +1,31 @@
 # VAPE MARKET
 
-## 1. Présentation du projet
+VAPE MARKET est un projet de site e-commerce destiné au marché tunisien,
+consacré aux produits de l'univers de la vape, sous réserve de leur
+conformité aux règles applicables.
 
-VAPE MARKET est un projet de site e-commerce destiné au marché tunisien, consacré aux produits de l'univers de la vape, sous réserve de leur conformité à la réglementation applicable.
+Le projet est encore en phase d'initialisation. Les données utilisées pendant
+le développement doivent rester fictives et aucune vente réelle ne doit être
+activée avant la validation des obligations légales et réglementaires.
 
-L'objectif est de développer une application web moderne, responsive, sécurisée et évolutive permettant de consulter un catalogue de produits, de gérer un panier, de passer des commandes et d'administrer la boutique.
+## Objectifs
 
-Le projet sera développé progressivement, en respectant les bonnes pratiques d'ingénierie logicielle.
+- proposer un catalogue responsive et administrable ;
+- gérer les comptes, le panier, les commandes et le stock ;
+- protéger les données et les opérations sensibles ;
+- préparer une architecture testable et évolutive.
 
-**État actuel :** initialisation de la structure du projet et préparation de la conception technique.
+## Stack prévue
 
-## 2. Objectifs
+- **Frontend :** React, Vite, Tailwind CSS, React Router et Lucide React ;
+- **Backend :** Node.js, Express et API REST ;
+- **Données et authentification :** Supabase PostgreSQL, Supabase Auth et RLS ;
+- **Tests :** Vitest, React Testing Library, Playwright et Postman.
 
-- Créer une interface utilisateur moderne et responsive.
-- Développer un catalogue de produits administrable.
-- Mettre en place une authentification sécurisée.
-- Concevoir une base de données relationnelle.
-- Développer une API backend structurée.
-- Gérer les produits, les stocks, les paniers et les commandes.
-- Créer un espace administrateur.
-- Mettre en place des tests automatisés.
-- Préparer le déploiement et le référencement SEO.
-- Respecter les exigences légales applicables en Tunisie.
+Ces choix restent prévisionnels et seront confirmés pendant la conception
+technique.
 
-## 3. Technologies prévues
-
-### Frontend
-- React.js
-- Vite
-- Tailwind CSS
-- React Router
-- Lucide React
-
-### Backend
-- Node.js
-- Express.js
-- API REST
-
-### Base de données et authentification
-- Supabase PostgreSQL
-- Supabase Auth
-- Row Level Security (RLS)
-
-### Images
-- Cloudinary
-
-### Tests
-- Postman
-- Vitest
-- React Testing Library
-- Playwright
-
-### Outils et déploiement
-- Visual Studio Code
-- Claude Code
-- Git
-- GitHub
-- Vercel pour le frontend, sous réserve de validation de la configuration
-- Hébergement Node.js pour le backend
-
-Cette stack est prévisionnelle. Les choix définitifs seront confirmés pendant la conception technique.
-
-## 4. Structure du projet
+## Structure
 
 ```text
 VAPE-MARKET/
@@ -77,30 +41,14 @@ VAPE-MARKET/
 └── CLAUDE.md
 ```
 
-### Description des dossiers
+## Prérequis
 
-- `frontend/` : application React.
-- `backend/` : serveur Express et logique métier.
-- `supabase/migrations/` : migrations SQL versionnées.
-- `supabase/seed.sql` : données fictives pour les tests.
-- `docs/` : documentation fonctionnelle et technique.
-- `tests/` : tests transversaux et tests de parcours.
-- `README.md` : documentation principale.
-- `CLAUDE.md` : instructions destinées à Claude Code.
+- Node.js en version LTS ;
+- npm ;
+- Git ;
+- un compte Supabase pour les futures intégrations.
 
-## 5. Prérequis
-
-Les outils suivants seront nécessaires :
-
-- Node.js, dans une version LTS compatible avec les dépendances.
-- npm.
-- Git.
-- Visual Studio Code.
-- Un compte Supabase.
-- Un compte Cloudinary lorsque la gestion des images sera mise en place.
-- Claude Code pour l'assistance au développement.
-
-Vérifier les installations avec :
+Vérifier l'installation :
 
 ```bash
 node --version
@@ -108,74 +56,45 @@ npm --version
 git --version
 ```
 
-## 6. État du développement
+## Démarrer le frontend
 
-Le développement suivra les étapes suivantes :
-
-1. Initialisation du dépôt Git et de la structure.
-2. Cahier des charges et conception technique.
-3. Validation des rôles, permissions et règles métier.
-4. Conception du modèle relationnel PostgreSQL.
-5. Création et validation des migrations SQL.
-6. Configuration du backend Express.
-7. Configuration du frontend React.
-8. Intégration de Supabase Auth.
-9. Développement du catalogue et des images.
-10. Développement du panier et des commandes.
-11. Développement de l'espace administrateur.
-12. Tests de sécurité et tests fonctionnels.
-13. Déploiement en préproduction.
-14. Vérification de la conformité et préparation de la mise en production.
-15. Optimisation SEO et suivi après lancement.
-
-Les fonctionnalités seront développées et validées progressivement.
-
-## 7. Configuration et sécurité
-
-Les secrets et les variables d'environnement doivent rester dans des fichiers locaux ignorés par Git.
-
-Les fichiers `.env.example` pourront documenter les variables nécessaires, sans contenir de véritables clés.
-
-Les clés secrètes Supabase et Cloudinary ne doivent jamais être exposées dans le frontend.
-
-Les prix, les quantités, le stock, les rôles et les autorisations doivent être vérifiés côté serveur.
-
-Les données des clients doivent être protégées par une authentification et des permissions adaptées.
-
-## 8. Base de données
-
-Les migrations SQL seront stockées dans :
-
-```text
-supabase/migrations/
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-Chaque migration devra être versionnée et documentée.
+Commandes disponibles dans `frontend/` :
 
-Les données de test seront définies dans `supabase/seed.sql`.
+```bash
+npm run lint
+npm run build
+npm run preview
+```
 
-Aucune migration ne doit être exécutée sur une base contenant des données importantes sans vérification préalable et stratégie de sauvegarde.
+## Configuration
 
-## 9. Tests
+Les secrets doivent rester dans des fichiers `.env` locaux ignorés par Git.
+Utiliser des fichiers `.env.example` pour documenter les variables nécessaires,
+sans y placer de valeur sensible. Les clés secrètes Supabase et Cloudinary ne
+doivent jamais être exposées dans le frontend.
 
-Les tests couvriront notamment :
+## Développement
 
-- Le fonctionnement des API.
-- La validation des données.
-- L'authentification et les autorisations.
-- L'affichage du catalogue.
-- Le calcul des prix.
-- La gestion du stock.
-- La création et le suivi des commandes.
-- Les erreurs et les accès non autorisés.
-- Les parcours utilisateur sur ordinateur et mobile.
+Les migrations seront ajoutées dans `supabase/migrations/` après validation
+du modèle relationnel, des contraintes et des politiques RLS. Le fichier
+`supabase/seed.sql` est réservé aux données fictives, reproductibles et
+compatibles avec ces migrations.
 
-## 10. Déploiement
+Avant chaque livraison, lancer le lint et le build du frontend. Les tests
+d'authentification, d'autorisations, de validation, de stock et de commandes
+devront couvrir les cas nominaux et les erreurs.
 
-Le déploiement sera préparé après validation de l'architecture, des tests, de la configuration de sécurité et des variables d'environnement.
+## Statut et conformité
 
-La mise en production commerciale restera conditionnée à la vérification des obligations légales et réglementaires applicables aux produits vendus en Tunisie.
+Le dépôt contient actuellement la structure initiale du frontend. Les ventes
+réelles, les paiements et le déploiement en production nécessitent une
+validation explicite de la sécurité, de la configuration et des obligations
+applicables en Tunisie.
 
-## 11. Licence
-
-Projet privé. Aucune licence de distribution n'est définie pour le moment.
+Projet privé ; aucune licence de distribution n'est définie pour le moment.

@@ -1,28 +1,8 @@
--- ==========================================================
 -- VAPE MARKET
--- Fichier : supabase/seed.sql
--- Objectif : données fictives pour le développement et les tests
--- ==========================================================
-
--- IMPORTANT :
--- Le modèle relationnel PostgreSQL n'a pas encore été validé.
--- Aucune donnée n'est insérée à cette étape.
+-- Development and test data only.
 --
--- Après validation du modèle de données, ce fichier pourra
--- contenir des données fictives pour :
---   - les catégories ;
---   - les produits ;
---   - les stocks initiaux ;
---   - les autres données de référence nécessaires aux tests.
+-- The relational schema has not been validated yet, so this file is
+-- intentionally a no-op. Add deterministic INSERT statements here only
+-- after the corresponding migrations and constraints have been approved.
 --
--- Ne jamais insérer de données personnelles réelles,
--- de véritables identifiants clients ou de secrets.
---
--- Les données de test doivent respecter les contraintes
--- définies dans les migrations SQL.
---
--- Les utilisateurs de test et leurs rôles devront être créés
--- selon une procédure adaptée à Supabase Auth.
---
--- Toute donnée de démonstration devra être clairement
--- identifiée comme fictive.
+-- Never add real customer data, credentials, API keys, or other secrets.

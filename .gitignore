@@ -1,62 +1,31 @@
-# ==========================================
-# DEPENDANCES
-# ==========================================
+# Dependencies
 node_modules/
 
-# ==========================================
-# FICHIERS DE BUILD
-# ==========================================
+# Build output
 dist/
 build/
+coverage/
 
-# ==========================================
-# VARIABLES D'ENVIRONNEMENT ET SECRETS
-# ==========================================
+# Local environment files
 .env
 .env.*
 !.env.example
-!.env.test.example
 
-# ==========================================
-# TESTS ET RAPPORTS
-# ==========================================
-coverage/
-playwright-report/
-test-results/
-.nyc_output/
-
-# ==========================================
-# LOGS
-# ==========================================
+# Logs
 *.log
 npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
 
-# ==========================================
-# EDITEURS ET SYSTEMES
-# ==========================================
-.DS_Store
-Thumbs.db
+# IDE and OS files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea/
-*.swp
-*.swo
+.DS_Store
+Thumbs.db
 
-# ==========================================
-# FICHIERS TEMPORAIRES
-# ==========================================
-tmp/
-temp/
-.cache/
+# Supabase local data
+.supabase/
 
-# ==========================================
-# FICHIERS DE CONFIGURATION LOCALE
-# ==========================================
-*.local
-
-# ==========================================
-# RAPPORTS DE TEST
-# ==========================================
-blob-report/
+# Temporary files
+*.tmp
+*.temp
