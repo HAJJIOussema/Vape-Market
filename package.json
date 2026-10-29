@@ -4,5 +4,8 @@
     "lucide-react": "^1.64.0",
     "react-router-dom": "^7.18.5",
     "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "supabase": "^2.122.0"
   }
 }
