@@ -1,0 +1,3 @@
+-- Historical remote snapshot archived in supabase/archive/.
+-- This placeholder preserves the applied migration version without replaying
+-- destructive schema drift during local resets.

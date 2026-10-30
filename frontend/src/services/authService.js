@@ -1,3 +1,9 @@
-import { apiRequest } from './api.js'
-export const login = (credentials) => apiRequest('/auth/login', { method: 'POST', body: JSON.stringify(credentials) })
-export const register = (details) => apiRequest('/auth/register', { method: 'POST', body: JSON.stringify(details) })
+import { supabase } from './supabase.js'
+
+export const login = (credentials) => supabase.auth.signInWithPassword(credentials)
+export const register = (details) => supabase.auth.signUp({
+  email: details.email,
+  password: details.password,
+  options: { data: { full_name: details.full_name } },
+})
+export const logout = () => supabase.auth.signOut()

@@ -1,0 +1,3 @@
+-- Migration retained to preserve the migration history already registered
+-- in the linked Supabase project. The final schema is defined by the
+-- preceding migrations.
