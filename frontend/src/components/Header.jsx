@@ -7,8 +7,14 @@ function Header({ currentPage, onNavigate, searchQuery, onSearch }) {
   const { itemCount } = useCart()
   const { user } = useAuth()
   async function handleLogout() {
-    await logout()
-    onNavigate('home')
+    try {
+      const { error } = await logout()
+      if (error) console.error('Unable to log out.', error)
+    } catch (error) {
+      console.error('Unable to log out.', error)
+    } finally {
+      onNavigate('home')
+    }
   }
   return <header className="site-header"><div className="header-inner">
     <button className="brand header-action" onClick={() => onNavigate('home')}>VAPE MARKET</button>

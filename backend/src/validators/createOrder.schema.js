@@ -4,9 +4,9 @@ const { uuid, tunisianPhone, tunisianPostalCode, nonEmptyText } = require('./_co
 const shippingAddress = z.object({
   recipient_name: nonEmptyText(160, 'Le nom du destinataire'),
   phone: tunisianPhone,
-  governorate: nonEmptyText(100, 'Le gouvernorat'),
-  city: nonEmptyText(100, 'La ville'),
   address_line: nonEmptyText(255, 'L’adresse'),
+  governorate: nonEmptyText(100, 'Le gouvernorat').optional(),
+  city: nonEmptyText(100, 'La ville').optional(),
   postal_code: tunisianPostalCode.optional(),
 }).strict()
 

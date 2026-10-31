@@ -1,29 +1,43 @@
 const AppError = require('../errors/AppError')
+const { createAuthSupabase } = require('../config/supabase')
 
 /**
- * Authentication boundary reserved for Supabase Auth integration.
- * The HTTP controllers must call this service rather than the Supabase client.
+ * Authentication boundary for Supabase Auth.
  */
 class AuthService {
-  /**
-   * @returns {Promise<never>} Not implemented until Auth controllers are introduced.
-   */
-  async signUp() { throw new AppError('Authentication service is not implemented.', 'NOT_IMPLEMENTED', 501) }
+  async signUp(input) {
+    const client = createAuthSupabase()
+    const { data, error } = await client.auth.signUp({
+      email: input.email,
+      password: input.password,
+      options: { data: { full_name: input.full_name || null } },
+    })
+    if (error) throw AppError.fromSupabase(error, 'Unable to create the account.')
+    return data
+  }
 
-  /**
-   * @returns {Promise<never>} Not implemented until Auth controllers are introduced.
-   */
-  async login() { throw new AppError('Authentication service is not implemented.', 'NOT_IMPLEMENTED', 501) }
+  async login(input) {
+    const client = createAuthSupabase()
+    const { data, error } = await client.auth.signInWithPassword({
+      email: input.email,
+      password: input.password,
+    })
+    if (error) throw AppError.fromSupabase(error, 'Unable to sign in.')
+    return data
+  }
 
-  /**
-   * @returns {Promise<never>} Not implemented until Auth controllers are introduced.
-   */
-  async refreshToken() { throw new AppError('Authentication service is not implemented.', 'NOT_IMPLEMENTED', 501) }
+  async refreshToken(input) {
+    const client = createAuthSupabase()
+    const { data, error } = await client.auth.refreshSession({
+      refresh_token: input.refresh_token,
+    })
+    if (error) throw AppError.fromSupabase(error, 'Unable to refresh the session.')
+    return data
+  }
 
-  /**
-   * @returns {Promise<never>} Not implemented until Auth controllers are introduced.
-   */
-  async logout() { throw new AppError('Authentication service is not implemented.', 'NOT_IMPLEMENTED', 501) }
+  async logout() {
+    return null
+  }
 }
 
 module.exports = new AuthService()

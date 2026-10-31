@@ -1,6 +1,32 @@
 import { apiRequest } from './api.js'
 
-export const getProfile = () => apiRequest('/profile')
+function unwrap(payload) {
+  return payload?.data ?? payload
+}
+
+async function wait(ms) {
+  await new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+export async function getProfile() {
+  const delays = [0, 300, 700]
+  let lastError
+
+  for (const delay of delays) {
+    if (delay) await wait(delay)
+    try {
+      return unwrap(await apiRequest('/profile'))
+    } catch (error) {
+      lastError = error
+      if (error.status !== 404) throw error
+    }
+  }
+
+  throw lastError
+}
+
 export const updateProfile = (payload) => apiRequest('/profile', {
   method: 'PATCH',
   body: JSON.stringify(payload),

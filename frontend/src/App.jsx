@@ -13,6 +13,8 @@ import NotFoundPage from './pages/NotFoundPage.jsx'
 import { CartProvider } from './context/CartContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import AdminRoute from './components/AdminRoute.jsx'
+import AdminDashboardPage from './pages/AdminDashboardPage.jsx'
 
 function RoutedApp() {
   const navigate = useNavigate()
@@ -53,6 +55,10 @@ function RoutedApp() {
             <Route path="/account/addresses" element={<AccountPage section="addresses" />} />
             <Route path="/account/orders" element={<OrdersPage />} />
             <Route path="/orders" element={<OrdersPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/admin/:section" element={<AdminDashboardPage />} />
+            </Route>
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

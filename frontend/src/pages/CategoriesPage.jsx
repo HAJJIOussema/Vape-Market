@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { getCategories } from '../services/categoryService.js'
 import { getProducts } from '../services/productService.js'
+import ImageWithFallback from '../components/ImageWithFallback.jsx'
+import { resolveImageUrl } from '../services/imageService.js'
 
 function CategoriesPage() {
   const [categories, setCategories] = useState([])
@@ -36,6 +38,13 @@ function CategoriesPage() {
     return counts
   }, {}), [products])
 
+  const categoryImages = useMemo(() => products.reduce((images, product) => {
+    if (!images[product.category_id] && product.image_paths?.[0]) {
+      images[product.category_id] = product.image_paths[0]
+    }
+    return images
+  }, {}), [products])
+
   if (status === 'loading') return <LoadingSpinner />
 
   if (status === 'error') {
@@ -54,11 +63,13 @@ function CategoriesPage() {
         <div className="category-grid">
           {categories.map((category) => (
             <Link className="category-card" key={category.id} to={`/products?category_id=${encodeURIComponent(category.id)}`}>
-              {category.image_path ? (
-                <img src={category.image_path} alt={category.name} />
-              ) : (
-                <div className="category-image-placeholder" aria-hidden="true">◈</div>
-              )}
+              <ImageWithFallback
+                className="category-card-image"
+                src={resolveImageUrl(category.image_path || categoryImages[category.id])}
+                alt={category.name}
+                fallbackClassName="category-image-placeholder"
+                fallbackLabel={`Image de la catégorie ${category.name}`}
+              />
               <div>
                 <h2>{category.name}</h2>
                 <p>{productCounts[category.id] || 0} produit(s)</p>

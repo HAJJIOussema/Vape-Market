@@ -37,6 +37,30 @@ class AdminService {
     return { data: data || [], meta: buildPaginationMeta(pagination.page, pagination.pageSize, count || 0) }
   }
 
+  async confirmOrder(profileId, orderId) {
+    await this.requireRole(profileId, ADMIN_ROLES)
+    if (!orderId) throw new ValidationError('Order identifier is required.')
+    const { data, error } = await supabase.from('orders')
+      .update({ status: 'confirmed' })
+      .eq('id', orderId)
+      .eq('status', 'pending')
+      .select()
+      .single()
+    if (error) throw AppError.fromSupabase(error, 'Unable to confirm order.')
+    return data
+  }
+
+  async cancelOrder(profileId, orderId, userSupabase) {
+    await this.requireRole(profileId, ADMIN_ROLES)
+    if (!orderId) throw new ValidationError('Order identifier is required.')
+    if (!userSupabase || typeof userSupabase.rpc !== 'function') {
+      throw new UnauthorizedError('Authenticated Supabase client is required for cancellation.')
+    }
+    const { data, error } = await userSupabase.rpc('cancel_order', { p_order_id: orderId })
+    if (error) throw AppError.fromSupabase(error, 'Unable to cancel order.')
+    return data
+  }
+
   /**
    * @returns {Promise<object>} Shipped order.
    */

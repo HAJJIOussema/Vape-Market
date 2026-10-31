@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { getProductBySlug } from '../services/productService.js'
 import { useCart } from '../context/useCart.js'
+import ImageWithFallback from '../components/ImageWithFallback.jsx'
+import { resolveImageUrl } from '../services/imageService.js'
 
 function ProductDetailsPage() {
   const { slug } = useParams()
@@ -45,24 +47,19 @@ function ProductDetailsPage() {
 
   const variant = product.variants?.[0]
   const imagePath = product.image_paths?.[0]
-  const imageBaseUrl = import.meta.env.VITE_IMAGE_BASE_URL
   const brandName = product.brands?.name || product.brand?.name || product.brand_name || product.brand_id
   const categoryName = product.categories?.name || product.category?.name || product.category_name || product.category_id
   const availableStock = (product.variants || []).some((item) => item.in_stock)
 
   return (
     <article className="product-details">
-      {imagePath && imageBaseUrl ? (
-        <img
+      <ImageWithFallback
           className="product-details-image"
-          src={`${imageBaseUrl.replace(/\/$/, '')}/${imagePath}`}
+          src={resolveImageUrl(imagePath)}
           alt={product.name}
+          fallbackClassName="product-details-image product-image-placeholder"
+          fallbackLabel={`Image de ${product.name}`}
         />
-      ) : (
-        <div className="product-details-image product-image-placeholder" role="img" aria-label={`Image de ${product.name}`}>
-          ◈
-        </div>
-      )}
       <div className="product-details-body">
         <p>{brandName || 'Marque indisponible'}</p>
         <h1>{product.name}</h1>

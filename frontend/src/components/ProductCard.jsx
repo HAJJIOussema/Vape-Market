@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
+import ImageWithFallback from './ImageWithFallback.jsx'
+import { resolveImageUrl } from '../services/imageService.js'
 
 function ProductCard({ product }) {
   const variant = product.variants?.[0]
   const imagePath = product.image_paths?.[0]
-  const imageBaseUrl = import.meta.env.VITE_IMAGE_BASE_URL
   const brandName = product.brands?.name || product.brand?.name || product.brand_name || product.brand_id
   const categoryName = product.categories?.name || product.category?.name || product.category_name || product.category_id
   const availableStock = (product.variants || []).some((item) => item.in_stock)
@@ -17,11 +18,13 @@ function ProductCard({ product }) {
 
   return (
     <Link className="product-card" to={`/products/${encodeURIComponent(product.slug)}`}>
-      {imagePath && imageBaseUrl ? (
-        <img className="product-image" src={`${imageBaseUrl.replace(/\/$/, '')}/${imagePath}`} alt={product.name} />
-      ) : (
-        <div className="product-image" aria-label={`Image de ${product.name}`} role="img">◈</div>
-      )}
+      <ImageWithFallback
+        className="product-image"
+        src={resolveImageUrl(imagePath)}
+        alt={product.name}
+        fallbackClassName="product-image"
+        fallbackLabel={`Image de ${product.name}`}
+      />
       <div className="product-body">
         <h3>{product.name}</h3>
         <p>{brandName || 'Marque indisponible'}</p>

@@ -22,6 +22,24 @@ module.exports = {
     }
   },
 
+  async confirmOrder(req, res, next) {
+    try {
+      const data = await adminService.confirmOrder(userIdOf(req), req.params.orderId)
+      return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  async cancelOrder(req, res, next) {
+    try {
+      const data = await adminService.cancelOrder(userIdOf(req), req.params.orderId, req.supabase)
+      return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
   /**
    * Ship an order.
    * @param {import('express').Request} req Express request.

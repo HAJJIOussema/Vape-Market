@@ -1,4 +1,5 @@
 const AppError = require('../errors/AppError')
+const { adminSupabase } = require('../config/supabase')
 const NotFoundError = require('../errors/NotFoundError')
 const UnauthorizedError = require('../errors/UnauthorizedError')
 const ValidationError = require('../errors/ValidationError')
@@ -32,6 +33,103 @@ class OrderService {
       || typeof input.shipping_address !== 'object') {
       throw new ValidationError('Order request is invalid.', { fields: ['idempotencyKey', 'items'] })
     }
+    // ══════════════════════════════════════════════════════════════════════
+    // DEBUG BLOC — à retirer après résolution
+    // ══════════════════════════════════════════════════════════════════════
+
+    // 1. Log brut du JSON qui sera envoyé à PostgreSQL via RPC
+    const itemsJson = JSON.stringify(input.items)
+    console.log('\n━━━ [create_order DEBUG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('[RPC] p_items (JSON brut envoyé) :', itemsJson)
+    console.log('[RPC] p_items parsed             :', JSON.parse(itemsJson))
+    console.log('[RPC] p_profile_id               :', input.profileId)
+
+    // 2. Simuler EXACTEMENT la jointure de create_order() pour chaque item
+    //    SELECT v.id, i.on_hand, i.reserved
+    //    FROM product_variants v
+    //    JOIN products p ON p.id = v.product_id AND p.status = 'active'
+    //    JOIN inventory i ON i.variant_id = v.id
+    //    WHERE v.id = <variant_id>::uuid
+    //      AND v.status = 'active'
+    console.log('\n[DEBUG] Simulation de la jointure SQL de create_order() :')
+    for (const item of input.items) {
+      const vid = item.variant_id
+      const qty  = Number(item.quantity)
+      console.log(`\n  ▶ variant_id="${vid}"  quantity=${qty}`)
+      console.log(`    typeof variant_id : ${typeof vid}`)
+      console.log(`    longueur          : ${String(vid).length} (UUID attendu: 36)`)
+
+      // Jointure triple identique à create_order()
+      const { data: joinRow, error: joinErr } = await adminSupabase
+        .from('product_variants')
+        .select(`
+          id,
+          sku,
+          name,
+          status,
+          price_tnd,
+          products!inner ( id, name, status ),
+          inventory!inner ( variant_id, on_hand, reserved )
+        `)
+        .eq('id', vid)
+        .eq('status', 'active')
+        .eq('products.status', 'active')
+        .maybeSingle()
+
+      if (joinErr) {
+        console.error(`    ❌ ERREUR jointure : ${joinErr.message}`, joinErr)
+        continue
+      }
+
+      if (!joinRow) {
+        // Décomposer pour trouver où ça casse
+        console.warn(`    ❌ JOINTURE NULLE — la condition create_order() échoue ici`)
+
+        const { data: v } = await adminSupabase
+          .from('product_variants')
+          .select('id, status, product_id')
+          .eq('id', vid)
+          .maybeSingle()
+        console.log(`    • product_variants.id trouvé   : ${v ? 'OUI' : 'NON'} | status=${v?.status}`)
+
+        if (v) {
+          const { data: p } = await adminSupabase
+            .from('products')
+            .select('id, status')
+            .eq('id', v.product_id)
+            .maybeSingle()
+          console.log(`    • products.status              : ${p?.status ?? 'INTROUVABLE'}`)
+
+          const { data: inv } = await adminSupabase
+            .from('inventory')
+            .select('variant_id, on_hand, reserved')
+            .eq('variant_id', vid)
+            .maybeSingle()
+          console.log(`    • inventory trouvé             : ${inv ? 'OUI' : 'NON'}`)
+          if (inv) console.log(`      on_hand=${inv.on_hand}  reserved=${inv.reserved}  available=${inv.on_hand - inv.reserved}`)
+          
+          if (v.status !== 'active') console.error(`    ══▶ CAUSE : variant.status="${v.status}" ≠ active`)
+          else if (p?.status !== 'active') console.error(`    ══▶ CAUSE : product.status="${p?.status}" ≠ active`)
+          else if (!inv) console.error(`    ══▶ CAUSE : AUCUNE ligne dans inventory pour ce variant_id`)
+          else console.error(`    ══▶ CAUSE INCONNUE — toutes les tables OK mais la jointure échoue`)
+        } else {
+          console.error(`    ══▶ CAUSE : variant_id "${vid}" INTROUVABLE dans product_variants`)
+          console.error(`                Vérifiez que le localStorage n'est pas un ancien seed.`)
+        }
+      } else {
+        const inv = joinRow.inventory
+        const available = inv.on_hand - inv.reserved
+        const ok = available >= qty
+        console.log(`    ✅ Jointure OK`)
+        console.log(`    • sku="${joinRow.sku}"  variant="${joinRow.name}"  status=${joinRow.status}`)
+        console.log(`    • product="${joinRow.products?.name}"  status=${joinRow.products?.status}`)
+        console.log(`    • on_hand=${inv.on_hand}  reserved=${inv.reserved}  available=${available}  qty_demandée=${qty}  ${ok ? '✅ STOCK OK' : '❌ STOCK INSUFFISANT'}`)
+        if (!ok) console.error(`    ══▶ CAUSE : stock insuffisant (available=${available} < qty=${qty})`)
+      }
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+    // ══════════════════════════════════════════════════════════════════════
+
     const { data, error } = await client.rpc('create_order', {
       p_idempotency_key: input.idempotencyKey,
       p_request_hash: requestHash,
@@ -42,8 +140,19 @@ class OrderService {
       p_shipping_cost_tnd: input.shipping_cost_tnd || 0,
       p_profile_id: input.profileId,
     })
-    if (error) throw AppError.fromSupabase(error, 'Unable to create order.')
-    return data
+    if (error) {
+      console.error('create_order RPC error', error)
+      throw AppError.fromSupabase(error, error.message || 'Unable to create order.')
+    }
+    if (data.status === 'pending') return data
+    const { data: pendingOrder, error: statusError } = await adminSupabase.from('orders')
+      .update({ status: 'pending' })
+      .eq('id', data.id)
+      .eq('status', 'confirmed')
+      .select()
+      .single()
+    if (statusError) throw AppError.fromSupabase(statusError, 'Unable to set the order status.')
+    return pendingOrder
   }
 
   /**

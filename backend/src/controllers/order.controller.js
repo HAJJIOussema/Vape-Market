@@ -13,6 +13,12 @@ module.exports = {
    */
   async createOrder(req, res, next) {
     try {
+      // ── DEBUG JWT FLOW ────────────────────────────────────────────────────
+      console.log('[createOrder] req.user          :', req.user)
+      console.log('[createOrder] Authorization header:', req.headers.authorization)
+      console.log('[createOrder] authenticated user id:', req.user?.id)
+      console.log('[createOrder] req.supabase exists :', Boolean(req.supabase))
+      // ─────────────────────────────────────────────────────────────────────
       const data = await orderService.createOrder({
         ...bodyOf(req),
         profileId: userIdOf(req),

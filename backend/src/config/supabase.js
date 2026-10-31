@@ -17,18 +17,35 @@ if (!supabaseAnonKey) {
 }
 
 const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+const authSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
+
+function createAuthSupabase() {
+  return authSupabase
+}
 
 /**
  * Create a Supabase client that forwards the caller JWT on every request.
  * PostgreSQL can then resolve auth.uid() for RLS and SECURITY DEFINER RPCs.
- * @param {string} accessToken Supabase access token.
+ *
+ * Fix: @supabase/supabase-js v2 can bypass global.headers for auth-scoped
+ * requests (including RPC calls) when no session is set in memory. Without
+ * setSession the Authorization header is NOT sent and PostgreSQL receives no
+ * JWT → auth.uid() returns NULL → "permission denied for function create_order".
+ *
+ * Solution: call setSession() after creating the client so the SDK always
+ * attaches the Bearer token on every network request (including RPCs).
+ * persistSession: false ensures nothing is written to localStorage/disk.
+ *
+ * @param {string} accessToken Supabase JWT access token.
  * @returns {import('@supabase/supabase-js').SupabaseClient}
  */
 function createUserSupabase(accessToken) {
   if (!accessToken) {
     throw new TypeError('A Supabase access token is required')
   }
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -39,6 +56,11 @@ function createUserSupabase(accessToken) {
       persistSession: false,
     },
   })
+  // Inject the JWT into the in-memory session so the SDK sends it on RPCs.
+  // A fake refresh token is fine here — persistSession is false and we never
+  // call refreshSession() on this client.
+  client.auth.setSession({ access_token: accessToken, refresh_token: 'no-refresh' })
+  return client
 }
 
-module.exports = { adminSupabase, createUserSupabase }
+module.exports = { adminSupabase, createUserSupabase, createAuthSupabase }

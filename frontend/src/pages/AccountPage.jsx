@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth.js'
+import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import {
   createAddress, deleteAddress, getAddresses, getProfile, updateProfile,
 } from '../services/accountService.js'
@@ -11,7 +12,7 @@ const emptyAddress = {
 }
 
 function AccountPage({ section = 'profile' }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState(null)
   const [addresses, setAddresses] = useState([])
   const [form, setForm] = useState(emptyAddress)
@@ -21,40 +22,57 @@ function AccountPage({ section = 'profile' }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (authLoading) return undefined
+    if (!user) return undefined
+
+    let active = true
+    setStatus('loading')
+    setError('')
+
     Promise.all([getProfile(), getAddresses()])
-      .then(([profileResponse, addressResponse]) => {
-        const nextProfile = profileResponse.data || profileResponse
+      .then(([nextProfile, addressResponse]) => {
+        if (!active) return
         setProfile(nextProfile)
         setFullName(nextProfile.full_name || user.user_metadata?.full_name || '')
         setAddresses(addressResponse.data || addressResponse || [])
         setStatus('ready')
       })
       .catch((requestError) => {
+        if (!active) return
         setError(requestError.message || 'Impossible de charger votre compte.')
         setStatus('error')
       })
-  }, [user])
+
+    return () => {
+      active = false
+    }
+  }, [user, authLoading])
 
   async function saveProfile(event) {
     event.preventDefault()
     setError('')
     setMessage('')
-    const response = await updateProfile({ full_name: fullName })
-    if (response?.success === false) setError(response.error?.message || 'Échec de la mise à jour.')
-    else setMessage('Profil mis à jour.')
+    try {
+      const response = await updateProfile({ full_name: fullName })
+      const nextProfile = response?.data || response
+      setProfile(nextProfile)
+      setMessage('Profil mis à jour.')
+    } catch (requestError) {
+      setError(requestError.message || 'Échec de la mise à jour.')
+    }
   }
 
   async function addAddress(event) {
     event.preventDefault()
     setError('')
-    const response = await createAddress({ ...form, postal_code: form.postal_code || undefined })
-    if (response?.success === false) {
-      setError(response.error?.message || 'Échec de la création de l’adresse.')
-      return
+    try {
+      const response = await createAddress({ ...form, postal_code: form.postal_code || undefined })
+      setAddresses([...addresses, response.data || response])
+      setForm(emptyAddress)
+      setMessage('Adresse ajoutée.')
+    } catch (requestError) {
+      setError(requestError.message || 'Échec de la création de l’adresse.')
     }
-    setAddresses([...addresses, response.data || response])
-    setForm(emptyAddress)
-    setMessage('Adresse ajoutée.')
   }
 
   async function removeAddress(id) {
@@ -67,7 +85,7 @@ function AccountPage({ section = 'profile' }) {
     }
   }
 
-  if (status === 'loading') return <p>Chargement de votre compte...</p>
+  if (authLoading || status === 'loading') return <LoadingSpinner />
   if (status === 'error') return <p role="alert">{error}</p>
 
   return (
@@ -77,6 +95,7 @@ function AccountPage({ section = 'profile' }) {
         <Link to="/account">Profil</Link>
         <Link to="/account/addresses">Adresses</Link>
         <Link to="/account/orders">Commandes</Link>
+        {['admin', 'super_admin'].includes(profile?.role) && <Link to="/admin">Administration</Link>}
       </nav>
       {section === 'addresses' ? (
         <div>
@@ -106,7 +125,7 @@ function AccountPage({ section = 'profile' }) {
         </div>
       ) : (
         <form className="account-form" onSubmit={saveProfile}>
-          <p>{profile?.email || user.email}</p>
+          <p>{user.email}</p>
           <label>Nom complet<input value={fullName} onChange={(event) => setFullName(event.target.value)} /></label>
           <button className="button">Enregistrer</button>
         </form>

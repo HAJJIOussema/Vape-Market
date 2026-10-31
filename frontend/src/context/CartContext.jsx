@@ -61,12 +61,17 @@ export function CartProvider({ children }) {
     persist(items.filter((item) => item.variant_id !== variantId))
   }
 
+  function clearCart() {
+    persist([])
+  }
+
   const value = {
     items,
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     addItem,
     updateItem,
     removeItem,
+    clearCart,
   }
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

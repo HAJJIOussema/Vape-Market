@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import { getOrders } from '../services/accountService.js'
 
+const statusLabels = {
+  pending: '🟠 En attente',
+  confirmed: '🟢 Confirmée',
+  cancelled: '🔴 Annulée',
+}
+
 function OrdersPage() {
   const [orders, setOrders] = useState([])
   const [status, setStatus] = useState('loading')
@@ -29,7 +35,7 @@ function OrdersPage() {
       {orders.length === 0 ? <p>Aucune commande pour le moment.</p> : orders.map((order) => (
         <article className="order-card" key={order.id}>
           <div><strong>{order.order_number}</strong><p>{new Date(order.created_at).toLocaleDateString('fr-FR')}</p></div>
-          <span>{order.status}</span>
+          <span>{statusLabels[order.status] || order.status}</span>
           <strong>{order.total_tnd} TND</strong>
         </article>
       ))}
