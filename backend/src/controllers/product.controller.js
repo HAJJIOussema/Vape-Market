@@ -51,4 +51,85 @@ module.exports = {
       return next(error)
     }
   },
+
+  /**
+   * Create a product.
+   * @param {import('express').Request} req Express request.
+   * @param {import('express').Response} res Express response.
+   * @param {import('express').NextFunction} next Express next function.
+   */
+  async createProduct(req, res, next) {
+    try {
+      const data = await productService.createProduct(req.body)
+      return sendSuccess(res, data, 201)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  /**
+   * Update a product.
+   * @param {import('express').Request} req Express request.
+   * @param {import('express').Response} res Express response.
+   * @param {import('express').NextFunction} next Express next function.
+   */
+  async updateProduct(req, res, next) {
+    try {
+      const data = await productService.updateProduct(req.params.productId, req.body)
+      return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  /**
+   * Delete a product.
+   * @param {import('express').Request} req Express request.
+   * @param {import('express').Response} res Express response.
+   * @param {import('express').NextFunction} next Express next function.
+   */
+  async deleteProduct(req, res, next) {
+    try {
+      await productService.deleteProduct(req.params.productId)
+      return res.status(204).send()
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  async listProductVariants(req, res, next) {
+    try {
+      const data = await productService.listProductVariants(req.params.productId)
+      return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  async createProductVariant(req, res, next) {
+    try {
+      const data = await productService.createProductVariant(req.params.productId, req.body)
+      return sendSuccess(res, data, 201)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  async updateProductVariant(req, res, next) {
+    try {
+      const data = await productService.updateProductVariant(req.params.variantId, req.body)
+      return sendSuccess(res, data)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  async deleteProductVariant(req, res, next) {
+    try {
+      await productService.deleteProductVariant(req.params.variantId)
+      return res.status(204).send()
+    } catch (error) {
+      return next(error)
+    }
+  },
 }

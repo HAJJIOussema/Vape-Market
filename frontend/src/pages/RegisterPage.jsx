@@ -52,7 +52,7 @@ function RegisterPage() {
       register
       disabled={!configured}
     >
-      {info && <p role="status">{info}</p>}
+      {info && <p className="form-message is-success" role="status">{info}</p>}
       <p>Déjà inscrit ? <Link to="/login">Se connecter</Link></p>
     </AuthForm>
   )

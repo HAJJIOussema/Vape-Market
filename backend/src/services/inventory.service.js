@@ -20,7 +20,8 @@ class InventoryService {
   async listInventory(profileId, filters = {}) {
     await this.requireRole(profileId, STOCK_ROLES)
     const pagination = parsePagination(filters)
-    let query = supabase.from('inventory').select('*, product_variants(*)', { count: 'exact' })
+    let query = supabase.from('inventory')
+      .select('*, product_variants(*, products(id, name, slug))', { count: 'exact' })
     if (filters.variant_id) query = query.eq('variant_id', filters.variant_id)
     if (filters.in_stock !== undefined) {
       const inStock = filters.in_stock === true || filters.in_stock === 'true'
@@ -29,24 +30,50 @@ class InventoryService {
     query = query.order('updated_at', { ascending: false }).range(pagination.from, pagination.to)
     const { data, count, error } = await query
     if (error) throw AppError.fromSupabase(error, 'Unable to list inventory.')
-    return { data: data || [], meta: buildPaginationMeta(pagination.page, pagination.pageSize, count || 0) }
+    return {
+      data: (data || []).map((row) => ({
+        ...row,
+        available: Number(row.on_hand || 0) - Number(row.reserved || 0),
+      })),
+      meta: buildPaginationMeta(pagination.page, pagination.pageSize, count || 0),
+    }
   }
 
   /**
+   * @param {string} profileId Authenticated profile UUID.
+   * @param {string} variantId Variant UUID.
+   * @param {{delta: number, reason: string}} input Validated adjustment.
+   * @param {{rpc: Function}} userSupabase Caller-scoped Supabase client (JWT).
    * @returns {Promise<object>} Updated inventory row.
    */
-  async adjustInventory(profileId, variantId, input = {}) {
+  async adjustInventory(profileId, variantId, input = {}, userSupabase) {
     await this.requireRole(profileId, STOCK_ROLES)
     if (!variantId || !Number.isInteger(input.delta) || input.delta === 0
       || typeof input.reason !== 'string' || input.reason.trim() === '') {
       throw new ValidationError('Inventory adjustment is invalid.')
     }
-    const { data, error } = await supabase.rpc('adjust_inventory', {
+    if (!userSupabase || typeof userSupabase.rpc !== 'function') {
+      throw new UnauthorizedError('Authenticated Supabase client is required for inventory adjustment.')
+    }
+    const { data, error } = await userSupabase.rpc('adjust_inventory', {
       p_variant_id: variantId,
       p_delta: input.delta,
       p_reason: input.reason.trim(),
     })
-    if (error) throw AppError.fromSupabase(error, 'Unable to adjust inventory.')
+    if (error) {
+      const message = String(error.message || '')
+      if (error.code === 'P0001' && message.includes('Invalid inventory adjustment')) {
+        throw new ValidationError('L’ajustement du stock est invalide.')
+      }
+      if (error.code === 'P0001' && message.includes('stock invalid')) {
+        throw new AppError(
+          'Ajustement impossible : stock introuvable ou quantité réservée supérieure au nouveau stock.',
+          'CONFLICT',
+          409,
+        )
+      }
+      throw AppError.fromSupabase(error, 'Unable to adjust inventory.')
+    }
     if (!data) throw new NotFoundError('Inventory')
     return data
   }
@@ -57,7 +84,8 @@ class InventoryService {
   async listMovements(profileId, filters = {}) {
     await this.requireRole(profileId, STOCK_ROLES)
     const pagination = parsePagination(filters)
-    let query = supabase.from('inventory_movements').select('*', { count: 'exact' })
+    let query = supabase.from('inventory_movements')
+      .select('*, product_variants(sku, name, products(name))', { count: 'exact' })
     if (filters.variant_id) query = query.eq('variant_id', filters.variant_id)
     if (filters.movement_type) {
       if (!MOVEMENT_TYPES.includes(filters.movement_type)) {

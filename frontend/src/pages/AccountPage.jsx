@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/useAuth.js'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import {
@@ -9,6 +9,10 @@ import {
 const emptyAddress = {
   address_type: 'home', label: '', recipient_name: '', phone: '',
   governorate: '', city: '', address_line: '', postal_code: '', is_default: false,
+}
+
+function navClassName({ isActive }) {
+  return isActive ? 'is-active' : ''
 }
 
 function AccountPage({ section = 'profile' }) {
@@ -86,52 +90,106 @@ function AccountPage({ section = 'profile' }) {
   }
 
   if (authLoading || status === 'loading') return <LoadingSpinner />
-  if (status === 'error') return <p role="alert">{error}</p>
+  if (status === 'error') return <p className="notice notice-error" role="alert">{error}</p>
+
+  const displayName = fullName || profile?.full_name || user?.email || 'Mon compte'
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
 
   return (
-    <section>
-      <h1>Mon compte</h1>
-      <nav className="account-nav">
-        <Link to="/account">Profil</Link>
-        <Link to="/account/addresses">Adresses</Link>
-        <Link to="/account/orders">Commandes</Link>
-        {['admin', 'super_admin'].includes(profile?.role) && <Link to="/admin">Administration</Link>}
-      </nav>
-      {section === 'addresses' ? (
+    <section className="account-page">
+      <div className="page-heading">
         <div>
-          <h2>Mes adresses</h2>
-          {addresses.map((address) => (
-            <article className="address-card" key={address.id}>
-              <strong>{address.label}</strong>
-              <p>{address.recipient_name} — {address.phone}</p>
-              <p>{address.address_line}, {address.city}, {address.governorate} {address.postal_code || ''}</p>
-              <button type="button" onClick={() => removeAddress(address.id)}>Supprimer</button>
-            </article>
-          ))}
-          <h2>Ajouter une adresse</h2>
-          <form className="account-form" onSubmit={addAddress}>
-            {[
-              ['label', 'Libellé'], ['recipient_name', 'Destinataire'], ['phone', 'Téléphone'],
-              ['governorate', 'Gouvernorat'], ['city', 'Ville'], ['address_line', 'Adresse'],
-              ['postal_code', 'Code postal'],
-            ].map(([field, label]) => (
-              <label key={field}>{label}
-                <input required={field !== 'postal_code'} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
+          <span className="eyebrow eyebrow-dark">Mon espace</span>
+          <h1>Mon compte</h1>
+          <p>Gérez vos informations, vos adresses et vos commandes.</p>
+        </div>
+        <div className="account-identity">
+          <span className="account-avatar" aria-hidden="true">{initials || 'V'}</span>
+          <div>
+            <strong>{displayName}</strong>
+            <span>{user.email}</span>
+          </div>
+        </div>
+      </div>
+
+      <nav className="account-nav" aria-label="Navigation du compte">
+        <NavLink to="/account" end className={navClassName}>Profil</NavLink>
+        <NavLink to="/account/addresses" className={navClassName}>Adresses</NavLink>
+        <NavLink to="/account/orders" className={navClassName}>Commandes</NavLink>
+        {['admin', 'super_admin'].includes(profile?.role) && <NavLink to="/admin">Administration</NavLink>}
+      </nav>
+
+      {section === 'addresses' ? (
+        <div className="account-panel">
+          <div className="account-panel-heading">
+            <div>
+              <span className="eyebrow eyebrow-dark">Livraison</span>
+              <h2>Mes adresses</h2>
+            </div>
+            <span className="count-pill">{addresses.length}</span>
+          </div>
+
+          {addresses.length === 0 ? (
+            <p className="notice">Aucune adresse enregistrée pour le moment.</p>
+          ) : (
+            <div className="address-list">
+              {addresses.map((address) => (
+                <article className="address-card" key={address.id}>
+                  <div className="address-card-head">
+                    <strong>{address.label}</strong>
+                    {address.is_default && <span className="mini-badge">Par défaut</span>}
+                  </div>
+                  <p>{address.recipient_name} — {address.phone}</p>
+                  <p>{address.address_line}, {address.city}, {address.governorate} {address.postal_code || ''}</p>
+                  <button type="button" onClick={() => removeAddress(address.id)}>Supprimer</button>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <div className="account-subsection">
+            <h3>Ajouter une adresse</h3>
+            <form className="account-form account-form-grid" onSubmit={addAddress}>
+              {[
+                ['label', 'Libellé'], ['recipient_name', 'Destinataire'], ['phone', 'Téléphone'],
+                ['governorate', 'Gouvernorat'], ['city', 'Ville'], ['address_line', 'Adresse'],
+                ['postal_code', 'Code postal'],
+              ].map(([field, label]) => (
+                <label key={field}>{label}
+                  <input required={field !== 'postal_code'} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
+                </label>
+              ))}
+              <label className="checkbox-field">
+                <input type="checkbox" checked={form.is_default} onChange={(event) => setForm({ ...form, is_default: event.target.checked })} />
+                Adresse par défaut
               </label>
-            ))}
-            <label><input type="checkbox" checked={form.is_default} onChange={(event) => setForm({ ...form, is_default: event.target.checked })} /> Adresse par défaut</label>
-            <button className="button">Ajouter l’adresse</button>
-          </form>
+              <button className="button">Ajouter l’adresse</button>
+            </form>
+          </div>
         </div>
       ) : (
-        <form className="account-form" onSubmit={saveProfile}>
-          <p>{user.email}</p>
-          <label>Nom complet<input value={fullName} onChange={(event) => setFullName(event.target.value)} /></label>
-          <button className="button">Enregistrer</button>
-        </form>
+        <div className="account-panel account-profile-panel">
+          <div className="account-panel-heading">
+            <div>
+              <span className="eyebrow eyebrow-dark">Informations</span>
+              <h2>Profil</h2>
+            </div>
+          </div>
+          <form className="account-form" onSubmit={saveProfile}>
+            <p className="account-email">{user.email}</p>
+            <label>Nom complet<input value={fullName} onChange={(event) => setFullName(event.target.value)} /></label>
+            <button className="button">Enregistrer</button>
+          </form>
+        </div>
       )}
-      {message && <p role="status">{message}</p>}
-      {error && <p role="alert">{error}</p>}
+
+      {message && <p className="form-message is-success" role="status">{message}</p>}
+      {error && <p className="form-message is-error" role="alert">{error}</p>}
     </section>
   )
 }

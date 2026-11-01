@@ -16,7 +16,9 @@ if (!supabaseAnonKey) {
   throw new Error('SUPABASE_ANON_KEY is required')
 }
 
-const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+})
 const authSupabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 })

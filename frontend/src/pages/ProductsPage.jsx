@@ -52,14 +52,36 @@ function ProductsPage({ searchQuery = '', categoryId = '' }) {
   }, [products, searchQuery])
 
   return (
-    <section>
-      <div className="section-heading">
-        <h1>Produits</h1>
-        {status === 'ready' && <span>{visibleProducts.length} produit(s)</span>}
+    <section className="catalog-page">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow eyebrow-dark">Catalogue</span>
+          <h1>Produits</h1>
+          <p>Parcourez notre sélection et trouvez le produit qui vous correspond.</p>
+        </div>
+        {status === 'ready' && (
+          <span className="count-pill">
+            {visibleProducts.length} produit{visibleProducts.length > 1 ? 's' : ''}
+          </span>
+        )}
       </div>
+
+      {searchQuery && (
+        <div className="filter-note">
+          <span>Résultats pour « {searchQuery} »</span>
+          <span>{visibleProducts.length} correspondance{visibleProducts.length > 1 ? 's' : ''}</span>
+        </div>
+      )}
+
       {status === 'loading' && <LoadingSpinner />}
-      {status === 'error' && <p role="alert">{error}</p>}
-      {status === 'ready' && visibleProducts.length === 0 && <p>Aucun produit trouvé</p>}
+      {status === 'error' && <p className="notice notice-error" role="alert">{error}</p>}
+      {status === 'ready' && visibleProducts.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-state-icon" aria-hidden="true">◈</span>
+          <h2>Aucun produit trouvé</h2>
+          <p>Essayez une autre recherche ou explorez une autre catégorie.</p>
+        </div>
+      )}
       {status === 'ready' && visibleProducts.length > 0 && <ProductGrid products={visibleProducts} />}
     </section>
   )

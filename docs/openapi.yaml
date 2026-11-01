@@ -595,7 +595,7 @@ paths:
     post:
       tags: [Admin]
       summary: Adjust inventory
-      description: Requires stock_manager, admin, or super_admin. Creates an immutable movement.
+      description: Requires stock_manager, admin, or super_admin. Applies a signed delta and creates an immutable movement.
       operationId: adjustInventory
       requestBody:
         required: true
@@ -604,8 +604,10 @@ paths:
             schema:
               type: object
               required: [delta, reason]
+              additionalProperties: false
               properties:
                 delta:
+                  type: integer
                   oneOf:
                     - { type: integer, maximum: -1 }
                     - { type: integer, minimum: 1 }
@@ -620,7 +622,7 @@ paths:
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
         '409': { $ref: '#/components/responses/ConflictError' }
-  /admin/inventory-movements:
+  /admin/inventory/movements:
     get:
       tags: [Admin]
       summary: List inventory movements
@@ -639,6 +641,42 @@ paths:
               schema: { $ref: '#/components/schemas/InventoryMovementList' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List user profiles with order counts
+      description: Requires admin or super_admin. Search applies to full name and phone.
+      operationId: listAdminUsers
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Users
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserList' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+  /admin/users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [Admin]
+      summary: Retrieve a user with order history
+      description: Requires admin or super_admin.
+      operationId: getAdminUser
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserDetail' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
   /admin/audit-logs:
     get:
       tags: [Admin]
@@ -657,6 +695,144 @@ paths:
               schema: { $ref: '#/components/schemas/AuditLogList' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/ForbiddenError' }
+  /admin/categories:
+    get:
+      tags: [Admin]
+      summary: List all categories with product counts
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminListCategories
+      parameters:
+        - $ref: '#/components/parameters/Active'
+      responses:
+        '200':
+          description: Categories
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CategoryList' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Admin]
+      summary: Create a category
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminCreateCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryRequest' }
+      responses:
+        '201':
+          description: Created category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+  /admin/categories/{categoryId}:
+    parameters:
+      - $ref: '#/components/parameters/CategoryId'
+    patch:
+      tags: [Admin]
+      summary: Update a category
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminUpdateCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CategoryUpdateRequest' }
+      responses:
+        '200':
+          description: Updated category
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Category' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      tags: [Admin]
+      summary: Delete a category without products
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminDeleteCategory
+      responses:
+        '204': { description: Category deleted }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+  /admin/brands:
+    get:
+      tags: [Admin]
+      summary: List all brands with product counts
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminListBrands
+      parameters:
+        - $ref: '#/components/parameters/Active'
+      responses:
+        '200':
+          description: Brands
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminBrandList' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+    post:
+      tags: [Admin]
+      summary: Create a brand
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminCreateBrand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BrandRequest' }
+      responses:
+        '201':
+          description: Created brand
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Brand' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+  /admin/brands/{brandId}:
+    parameters:
+      - $ref: '#/components/parameters/BrandId'
+    patch:
+      tags: [Admin]
+      summary: Update a brand
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminUpdateBrand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BrandUpdateRequest' }
+      responses:
+        '200':
+          description: Updated brand
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Brand' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      tags: [Admin]
+      summary: Delete a brand without products
+      description: Requires admin, stock_manager, or super_admin.
+      operationId: adminDeleteBrand
+      responses:
+        '204': { description: Brand deleted }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
 
 components:
   securitySchemes:
@@ -672,6 +848,7 @@ components:
     ProductId: { name: productId, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
     VariantId: { name: variantId, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
     OrderId: { name: orderId, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
+    UserId: { name: userId, in: path, required: true, schema: { $ref: '#/components/schemas/UUID' } }
     ProfileId: { name: profile_id, in: query, schema: { $ref: '#/components/schemas/UUID' } }
     ParentId: { name: parent_id, in: query, schema: { $ref: '#/components/schemas/UUID' } }
     CategoryIdQuery: { name: category_id, in: query, schema: { $ref: '#/components/schemas/UUID' } }
@@ -865,8 +1042,31 @@ components:
         image_path: { type: [string, 'null'] }
         is_active: { type: boolean }
         sort_order: { type: integer, minimum: 0 }
+        product_count: { type: integer, minimum: 0 }
         created_at: { $ref: '#/components/schemas/Timestamp' }
         updated_at: { $ref: '#/components/schemas/Timestamp' }
+    CategoryRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        parent_id: { type: [string, 'null'], format: uuid }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        slug: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        description: { type: [string, 'null'], maxLength: 5000 }
+        image_path: { type: [string, 'null'], maxLength: 500 }
+        is_active: { type: boolean, default: true }
+        sort_order: { type: integer, minimum: 0, default: 0 }
+    CategoryUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        parent_id: { type: [string, 'null'], format: uuid }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        slug: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        description: { type: [string, 'null'], maxLength: 5000 }
+        image_path: { type: [string, 'null'], maxLength: 500 }
+        is_active: { type: boolean }
+        sort_order: { type: integer, minimum: 0 }
     CategoryList:
       type: object
       required: [data]
@@ -882,14 +1082,38 @@ components:
         description: { type: [string, 'null'] }
         image_path: { type: [string, 'null'] }
         is_active: { type: boolean }
+        product_count: { type: integer, minimum: 0 }
         created_at: { $ref: '#/components/schemas/Timestamp' }
         updated_at: { $ref: '#/components/schemas/Timestamp' }
+    BrandRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        slug: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        description: { type: [string, 'null'], maxLength: 5000 }
+        image_path: { type: [string, 'null'], maxLength: 500 }
+        is_active: { type: boolean, default: true }
+    BrandUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        slug: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+        description: { type: [string, 'null'], maxLength: 5000 }
+        image_path: { type: [string, 'null'], maxLength: 500 }
+        is_active: { type: boolean }
     BrandList:
       type: object
       required: [data, meta]
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/Brand' } }
         meta: { $ref: '#/components/schemas/Pagination' }
+    AdminBrandList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Brand' } }
     ProductVariant:
       type: object
       required: [id, product_id, sku, name, attributes, price_tnd, is_default, status, in_stock]
@@ -1007,7 +1231,14 @@ components:
         variant_id: { $ref: '#/components/schemas/UUID' }
         on_hand: { type: integer, minimum: 0 }
         reserved: { type: integer, minimum: 0 }
-        available: { type: integer, minimum: 0 }
+        available:
+          type: integer
+          minimum: 0
+          description: Computed as on_hand - reserved.
+        product_variants:
+          type: [object, 'null']
+          description: Variant (SKU, name) joined with its product (id, name, slug).
+          additionalProperties: true
         updated_at: { $ref: '#/components/schemas/Timestamp' }
     InventoryList:
       type: object
@@ -1031,6 +1262,10 @@ components:
         reserved_change: { type: integer }
         reserved_after: { type: integer, minimum: 0 }
         reason: { type: string }
+        product_variants:
+          type: [object, 'null']
+          description: Variant (SKU, name) joined with its product (name).
+          additionalProperties: true
         created_at: { $ref: '#/components/schemas/Timestamp' }
     InventoryMovementList:
       type: object
@@ -1058,3 +1293,52 @@ components:
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }
         meta: { $ref: '#/components/schemas/Pagination' }
+    AdminUser:
+      type: object
+      required: [id, role, created_at, order_count]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        full_name: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        role: { $ref: '#/components/schemas/UserRole' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        order_count: { type: integer, minimum: 0 }
+    AdminUserList:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AdminUser' } }
+        meta: { $ref: '#/components/schemas/Pagination' }
+    AdminUserAddress:
+      type: object
+      required: [id, label, recipient_name, phone, governorate, city, address_line]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        label: { type: string }
+        recipient_name: { type: string }
+        phone: { type: string }
+        governorate: { type: string }
+        city: { type: string }
+        address_line: { type: string }
+        postal_code: { type: [string, 'null'] }
+        is_default: { type: boolean }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+    AdminUserOrder:
+      type: object
+      required: [id, order_number, created_at, status, total_tnd]
+      properties:
+        id: { $ref: '#/components/schemas/UUID' }
+        order_number: { type: string }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        total_tnd: { type: number, minimum: 0 }
+    AdminUserDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdminUser'
+        - type: object
+          required: [total_ordered_tnd, orders]
+          properties:
+            updated_at: { $ref: '#/components/schemas/Timestamp' }
+            total_ordered_tnd: { type: number, minimum: 0 }
+            addresses: { type: array, items: { $ref: '#/components/schemas/AdminUserAddress' } }
+            orders: { type: array, items: { $ref: '#/components/schemas/AdminUserOrder' } }

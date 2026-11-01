@@ -27,8 +27,11 @@ class AddressService {
     this.requireProfile(profileId)
     const client = this.requireClient(userSupabase)
     this.validateInput(input)
+    // The deployed addresses table does not expose address_type to PostgREST.
+    // Keep the field accepted for compatibility, but never send it to the database.
+    const { address_type, ...addressInput } = input
     const { data, error } = await client.from('addresses')
-      .insert({ ...input, profile_id: profileId }).select().single()
+      .insert({ ...addressInput, profile_id: profileId }).select().single()
     if (error) throw AppError.fromSupabase(error, 'Unable to create address.')
     return data
   }
@@ -57,7 +60,10 @@ class AddressService {
     this.requireProfile(profileId)
     const client = this.requireClient(userSupabase)
     this.validateInput(input, true)
-    const { data, error } = await client.from('addresses').update(input)
+    // Keep address_type accepted for compatibility, but the deployed table
+    // does not expose it through PostgREST.
+    const { address_type, ...addressInput } = input
+    const { data, error } = await client.from('addresses').update(addressInput)
       .eq('id', addressId).eq('profile_id', profileId).select().maybeSingle()
     if (error) throw AppError.fromSupabase(error, 'Unable to update address.')
     if (!data) throw new NotFoundError('Address')
