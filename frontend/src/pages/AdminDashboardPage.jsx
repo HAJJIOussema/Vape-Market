@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import ImageWithFallback from '../components/ImageWithFallback.jsx'
+import BrandLogo from '../components/BrandLogo.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import RoleBadge from '../components/RoleBadge.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
@@ -201,7 +202,7 @@ function AdminDashboardPage() {
     <section className="admin-layout">
       <aside className="admin-sidebar">
         <Link className="admin-sidebar-brand" to="/">
-          <span className="brand-mark" aria-hidden="true">V</span>
+          <BrandLogo showWordmark={false} />
           <span>
             <strong>VAPE MARKET</strong>
             <small>Administration</small>
@@ -341,7 +342,7 @@ function ProductsSection({ products = [], onReload }) {
   const [brands, setBrands] = useState([])
   const [variants, setVariants] = useState([])
   const [variantForm, setVariantForm] = useState({
-    name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active',
+    name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active', model: '',
   })
   const [editingVariant, setEditingVariant] = useState(null)
   const [variantError, setVariantError] = useState('')
@@ -402,6 +403,7 @@ function ProductsSection({ products = [], onReload }) {
       stock: Number(variantForm.stock),
       is_default: variantForm.is_default,
       status: variantForm.status,
+      attributes: { model: variantForm.model || 'Standard' },
     }
     setVariantError('')
     try {
@@ -411,7 +413,7 @@ function ProductsSection({ products = [], onReload }) {
         await createAdminProductVariant(editing.id, payload)
       }
       setEditingVariant(null)
-      setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active' })
+      setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active', model: '' })
       await loadVariants(editing.id)
     } catch (requestError) {
       setVariantError(requestError.message || 'Impossible d’enregistrer la variante.')
@@ -437,6 +439,7 @@ function ProductsSection({ products = [], onReload }) {
       stock: Number(variant.on_hand ?? 0),
       is_default: Boolean(variant.is_default),
       status: variant.status || 'active',
+      model: variant.attributes?.model || 'Standard',
     })
     setVariantError('')
   }
@@ -626,6 +629,10 @@ function ProductsSection({ products = [], onReload }) {
                   <option value="inactive">inactive</option>
                   <option value="archived">archived</option>
                 </select>
+              </label>
+              <label>
+                Modèle
+                <input placeholder="Gear, Star, 15K..." value={variantForm.model} onChange={(event) => setVariantForm({ ...variantForm, model: event.target.value })} />
               </label>
               <label className="checkbox-field">
                 <input type="checkbox" checked={variantForm.is_default} onChange={(event) => setVariantForm({ ...variantForm, is_default: event.target.checked })} />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import BrandLogo from '../components/BrandLogo.jsx'
 import { login } from '../services/authService.js'
 import { useAuth } from '../context/useAuth.js'
 
@@ -67,10 +68,6 @@ function AuthForm({
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
         <aside className="auth-visual">
-          <Link className="auth-brand" to="/">
-            <span className="brand-mark" aria-hidden="true">V</span>
-            <span className="brand-text">VAPE <span>MARKET</span></span>
-          </Link>
           <div className="auth-visual-copy">
             <span className="eyebrow">Votre espace personnel</span>
             <h2>Une expérience d’achat qui vous ressemble.</h2>
@@ -94,6 +91,9 @@ function AuthForm({
         </aside>
 
         <div className="auth-content">
+          <Link className="auth-brand auth-brand-form" to="/">
+            <BrandLogo />
+          </Link>
           <span className="eyebrow eyebrow-dark">{register ? 'Nouveau compte' : 'Bon retour'}</span>
           <h1>{title}</h1>
           <p className="auth-subtitle">

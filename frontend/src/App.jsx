@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage.jsx'
 import ProductsPage from './pages/ProductsPage.jsx'
 import ProductDetailsPage from './pages/ProductDetailsPage.jsx'
 import CategoriesPage from './pages/CategoriesPage.jsx'
+import BrandsPage from './pages/BrandsPage.jsx'
 import CartPage from './pages/CartPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
@@ -12,6 +13,7 @@ import OrdersPage from './pages/OrdersPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import { CartProvider } from './context/CartContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { LanguageProvider } from './context/LanguageContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminRoute from './components/AdminRoute.jsx'
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx'
@@ -23,6 +25,7 @@ function RoutedApp() {
   const searchParams = new URLSearchParams(location.search)
   const searchQuery = searchParams.get('q') || ''
   const categoryId = searchParams.get('category_id') || ''
+  const brandSlug = searchParams.get('brand') || ''
 
   function navigateTo(page) {
     navigate(page === 'home' ? '/' : `/${page}`)
@@ -34,6 +37,7 @@ function RoutedApp() {
   }
 
   return (
+    <LanguageProvider>
     <AuthProvider>
       <CartProvider>
       <MainLayout
@@ -44,9 +48,10 @@ function RoutedApp() {
       >
         <Routes>
           <Route path="/" element={<HomePage onNavigate={navigateTo} />} />
-          <Route path="/products" element={<ProductsPage searchQuery={searchQuery} categoryId={categoryId} />} />
+          <Route path="/products" element={<ProductsPage searchQuery={searchQuery} categoryId={categoryId} brandSlug={brandSlug} />} />
           <Route path="/products/:slug" element={<ProductDetailsPage key={location.pathname} />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/marques" element={<BrandsPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -65,6 +70,7 @@ function RoutedApp() {
       </MainLayout>
       </CartProvider>
     </AuthProvider>
+    </LanguageProvider>
   )
 }
 

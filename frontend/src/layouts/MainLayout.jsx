@@ -2,6 +2,8 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import Header from '../components/Header.jsx'
 import Footer from '../components/Footer.jsx'
+import AgeVerification from '../components/AgeVerification.jsx'
+import CookieBanner from '../components/CookieBanner.jsx'
 
 function MainLayout({ children, currentPage, onNavigate, searchQuery, onSearch }) {
   const location = useLocation()
@@ -9,6 +11,7 @@ function MainLayout({ children, currentPage, onNavigate, searchQuery, onSearch }
 
   return (
     <>
+      <AgeVerification />
       <Header
         currentPage={currentPage}
         onNavigate={onNavigate}
@@ -26,6 +29,7 @@ function MainLayout({ children, currentPage, onNavigate, searchQuery, onSearch }
         </motion.div>
       </main>
       <Footer />
+      <CookieBanner />
     </>
   )
 }

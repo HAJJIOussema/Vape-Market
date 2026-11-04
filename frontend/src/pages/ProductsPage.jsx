@@ -3,7 +3,7 @@ import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
 import { getProducts } from '../services/productService.js'
 
-function ProductsPage({ searchQuery = '', categoryId = '' }) {
+function ProductsPage({ searchQuery = '', categoryId = '', brandSlug = '' }) {
   const [products, setProducts] = useState([])
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
@@ -32,10 +32,22 @@ function ProductsPage({ searchQuery = '', categoryId = '' }) {
   }, [categoryId])
 
   const visibleProducts = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
-    if (!normalizedQuery) return products
+    let result = products
 
-    return products.filter((product) => {
+    if (brandSlug) {
+      const normalizedBrand = brandSlug.trim().toLocaleLowerCase()
+      result = result.filter((product) => {
+        const brand = product.brands?.slug || product.brand?.slug || product.brand_slug
+        const brandName = product.brands?.name || product.brand?.name || product.brand_name || ''
+        return String(brand || '').toLocaleLowerCase() === normalizedBrand
+          || brandName.toLocaleLowerCase().includes(normalizedBrand)
+      })
+    }
+
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
+    if (!normalizedQuery) return result
+
+    return result.filter((product) => {
       const searchableValues = [
         product.name,
         product.brands?.name,
@@ -49,7 +61,7 @@ function ProductsPage({ searchQuery = '', categoryId = '' }) {
         typeof value === 'string' && value.toLocaleLowerCase().includes(normalizedQuery)
       ))
     })
-  }, [products, searchQuery])
+  }, [products, searchQuery, brandSlug])
 
   return (
     <section className="catalog-page">

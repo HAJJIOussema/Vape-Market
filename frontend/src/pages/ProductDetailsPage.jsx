@@ -6,6 +6,7 @@ import { getProductBySlug } from '../services/productService.js'
 import { useCart } from '../context/useCart.js'
 import ImageWithFallback from '../components/ImageWithFallback.jsx'
 import { resolveImageUrl } from '../services/imageService.js'
+import { getFlavorArtworkPath, getFlavorColor, getFlavorTheme } from '../utils/flavor.js'
 
 function ProductDetailsPage() {
   const { slug } = useParams()
@@ -14,6 +15,7 @@ function ProductDetailsPage() {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const [selectedVariantId, setSelectedVariantId] = useState(null)
+  const [selectedModel, setSelectedModel] = useState(null)
   const reduceMotion = useReducedMotion()
 
   useEffect(() => {
@@ -24,7 +26,9 @@ function ProductDetailsPage() {
         if (!active) return
         const nextProduct = response.data || response
         setProduct(nextProduct)
-        setSelectedVariantId(nextProduct?.variants?.[0]?.id ?? null)
+        const firstVariant = nextProduct?.variants?.[0] || null
+        setSelectedModel(firstVariant?.attributes?.model || (nextProduct?.variants?.length ? 'Standard' : null))
+        setSelectedVariantId(firstVariant?.id ?? null)
         setStatus('ready')
       })
       .catch((requestError) => {
@@ -52,12 +56,37 @@ function ProductDetailsPage() {
   }
 
   const variants = product.variants || []
-  const selectedVariant = variants.find((item) => item.id === selectedVariantId) || variants[0] || null
+  const productImages = product.product_images || product.images || []
+  const models = [...new Set(variants.map((item) => item.attributes?.model || 'Standard'))]
+  const activeModel = selectedModel && models.includes(selectedModel) ? selectedModel : models[0] || null
+  const modelVariants = activeModel
+    ? variants.filter((item) => (item.attributes?.model || 'Standard') === activeModel)
+    : variants
+  const selectedVariant = modelVariants.find((item) => item.id === selectedVariantId) || modelVariants[0] || null
   const variant = selectedVariant
-  const imagePath = product.image_paths?.[0]
+  const productImage = productImages.find((image) => !image.variant_id)
+  const productImagePath = productImage?.storage_path || productImage?.secure_url
+  const imagePath = getVariantImagePath(selectedVariant) || productImagePath || product.image_paths?.[0]
+  const flavorColor = getFlavorColor(selectedVariant?.name)
+  const flavorTheme = getFlavorTheme(selectedVariant?.name)
   const brandName = product.brands?.name || product.brand?.name || product.brand_name || product.brand_id
   const categoryName = product.categories?.name || product.category?.name || product.category_name || product.category_id
   const availableStock = Boolean(selectedVariant?.in_stock)
+
+  function getVariantImagePath(item) {
+    const variantImage = productImages.find((image) => image.variant_id === item?.id)
+    return variantImage?.storage_path || variantImage?.secure_url || item?.image_path || getFlavorArtworkPath(product, item)
+  }
+
+  function resolveProductImage(path) {
+    return path?.startsWith('/') ? path : resolveImageUrl(path)
+  }
+
+  function selectModel(model) {
+    setSelectedModel(model)
+    const firstVariant = variants.find((item) => (item.attributes?.model || 'Standard') === model)
+    setSelectedVariantId(firstVariant?.id ?? null)
+  }
 
   return (
     <article className="product-details-page">
@@ -75,11 +104,19 @@ function ProductDetailsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="product-details-media">
+        <div
+          className="product-details-media"
+          style={{
+            '--flavor-accent': flavorColor,
+            '--flavor-soft': flavorTheme.soft,
+            '--flavor-glow': flavorTheme.glow,
+          }}
+        >
           <ImageWithFallback
+            key={`${selectedVariant?.id || 'default'}-${imagePath || 'fallback'}`}
             className="product-details-image"
-            src={resolveImageUrl(imagePath)}
-            alt={product.name}
+            src={resolveProductImage(imagePath)}
+            alt={`${product.name}${selectedVariant?.name ? ` — ${selectedVariant.name}` : ''}`}
             fallbackClassName="product-details-image product-image-placeholder"
             fallbackLabel={`Image de ${product.name}`}
           />
@@ -87,6 +124,12 @@ function ProductDetailsPage() {
             <span className="status-dot" />
             {availableStock ? 'Disponible' : 'Rupture de stock'}
           </span>
+          {selectedVariant?.name && (
+            <span className="product-image-flavor">{selectedVariant.name}</span>
+          )}
+          {selectedVariant?.name && (
+            <span className="product-image-label">{selectedVariant.name}</span>
+          )}
         </div>
 
         <div className="product-details-body">
@@ -102,6 +145,7 @@ function ProductDetailsPage() {
             </span>
             <span className="product-price-note">Prix TTC · TVA incluse</span>
           </div>
+          {selectedVariant?.sku && <p className="product-sku">SKU : {selectedVariant.sku}</p>}
 
           <div className="product-purchase">
             <button className="button" type="button" disabled={!availableStock} onClick={() => addItem(product, variant)}>
@@ -122,25 +166,66 @@ function ProductDetailsPage() {
 
           <div className="product-variants">
             <div className="product-variants-heading">
-              <h2>Variantes</h2>
-              <span>{(product.variants || []).length}</span>
+              <div>
+                <h2>Saveurs</h2>
+                <p className="product-variants-hint">Sélectionnez une saveur pour voir son visuel.</p>
+              </div>
+              <span>{modelVariants.length}</span>
             </div>
             {(product.variants || []).length === 0 ? (
               <p className="notice">Aucune variante disponible.</p>
             ) : (
-              <ul className="variant-list">
-                {variants.map((item) => {
+              <>
+                {models.length > 1 && (
+                  <div className="model-selector">
+                    <span className="model-selector-label">Modèle</span>
+                    <div className="model-list">
+                      {models.map((model) => (
+                        <motion.button
+                          key={model}
+                          type="button"
+                          className={`model-option${model === activeModel ? ' is-selected' : ''}`}
+                          onClick={() => selectModel(model)}
+                          whileHover={reduceMotion ? undefined : { y: -2 }}
+                          whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                        >
+                          {model}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <ul className="variant-list">
+                {modelVariants.map((item) => {
                   const isSelected = item.id === selectedVariant?.id
+                  const itemArtwork = getVariantImagePath(item)
+                  const itemTheme = getFlavorTheme(item.name)
                   return (
                     <li key={item.id}>
                       <motion.button
                         type="button"
                         className={`variant-option${isSelected ? ' is-selected' : ''}${item.in_stock ? '' : ' is-unavailable'}`}
+                        style={{ '--flavor-accent': itemTheme.accent, '--flavor-glow': itemTheme.glow }}
                         onClick={() => setSelectedVariantId(item.id)}
                         whileHover={reduceMotion ? undefined : { y: -2 }}
                         whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                         disabled={!item.in_stock}
+                        aria-pressed={isSelected}
                       >
+                        <span className="variant-thumb" aria-hidden="true">
+                          {itemArtwork ? (
+                            <img
+                              key={itemArtwork}
+                              src={resolveProductImage(itemArtwork)}
+                              alt=""
+                              loading="lazy"
+                              width="54"
+                              height="54"
+                            />
+                          ) : (
+                            <span className="variant-thumb-fallback" />
+                          )}
+                        </span>
                         <span className="variant-option-main">
                           <strong>{item.name}</strong>
                           <span>{item.in_stock ? 'En stock' : 'Rupture de stock'}</span>
@@ -160,6 +245,7 @@ function ProductDetailsPage() {
                   )
                 })}
               </ul>
+              </>
             )}
           </div>
         </div>

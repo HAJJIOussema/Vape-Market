@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import BrandLogo from './BrandLogo.jsx'
 
 const currentYear = new Date().getFullYear()
 
@@ -6,13 +7,9 @@ function Footer() {
   return (
     <footer className="site-footer">
       <div className="footer-inner">
-        <div className="footer-brand">
-          <span className="brand-mark" aria-hidden="true">V</span>
-          <div>
-            <strong>VAPE MARKET</strong>
-            <p>Une expérience simple pour vos achats au quotidien.</p>
-          </div>
-        </div>
+        <BrandLogo className="footer-brand">
+          <span className="footer-description">Une expérience simple pour vos achats au quotidien.</span>
+        </BrandLogo>
         <div className="footer-links">
           <div>
             <span className="footer-heading">Boutique</span>

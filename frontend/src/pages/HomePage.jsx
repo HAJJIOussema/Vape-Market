@@ -1,22 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
 import { getProducts } from '../services/productService.js'
 
-const features = [
+const assurances = [
   {
-    title: 'Sélection vérifiée',
-    description: 'Des produits choisis avec soin, disponibles et prêts à être expédiés.',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="m5 12 4 4L19 6" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Livraison rapide',
-    description: 'Une préparation soignée et un suivi simple, de la commande à la réception.',
+    title: 'Livraison partout en Tunisie',
+    description: 'Expédition rapide et suivie vers toutes les régions.',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" />
@@ -26,8 +18,26 @@ const features = [
     ),
   },
   {
-    title: 'Paiement serein',
-    description: 'Un parcours d’achat fluide et sécurisé, sur mobile comme sur ordinateur.',
+    title: 'Produits authentiques',
+    description: 'Une sélection vérifiée pour une expérience fiable.',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m5 12 4 4L19 6" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Support client',
+    description: 'Une équipe disponible pour vous accompagner.',
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 12a8 8 0 0 1 16 0M7 12v4a2 2 0 0 0 2 2h1M17 12v4a2 2 0 0 0-2 2h-1" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Paiement sécurisé',
+    description: 'Commande simple et paiement à la livraison.',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="3" y="6" width="18" height="13" rx="2.5" />
@@ -38,17 +48,18 @@ const features = [
 ]
 
 function HomePage({ onNavigate }) {
-  const [featuredProducts, setFeaturedProducts] = useState([])
+  const [products, setProducts] = useState([])
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
   const reduceMotion = useReducedMotion()
+  const navigate = useNavigate()
 
   useEffect(() => {
     let active = true
-    getProducts('page_size=3')
-      .then((response) => {
+    getProducts('page_size=100')
+      .then((productsResponse) => {
         if (!active) return
-        setFeaturedProducts(response.data || response)
+        setProducts(productsResponse.data || productsResponse || [])
         setStatus('ready')
       })
       .catch((requestError) => {
@@ -61,20 +72,42 @@ function HomePage({ onNavigate }) {
     }
   }, [])
 
+  const bestSellers = useMemo(() => products.slice(0, 8), [products])
+  // Hero uses the project cover image.
+
+  const brands = useMemo(() => {
+    const brandCatalog = [
+      { name: 'Vozol', slug: 'vozol', logo: '/brands/vozol.png' },
+      { name: 'Nexpod', slug: 'nexpod', logo: '/brands/nexpod.png' },
+      { name: 'Refillo', slug: 'refillo', logo: '/brands/refillo.png' },
+      { name: 'Deep Cloud', slug: 'deep-cloud', logo: '/brands/deep-cloud.png' },
+      { name: 'Mazaya', slug: 'mazaya', logo: '/brands/mazaya.png' },
+      { name: 'Al Fakher', slug: 'al-fakher', logo: '/brands/al-fakher.png' },
+    ]
+    return brandCatalog.map((brand) => ({
+      ...brand,
+      count: products.filter((product) => {
+        const productBrand = product.brands?.name || product.brand?.name || ''
+        return productBrand.toLowerCase() === brand.name.toLowerCase()
+      }).length,
+    }))
+  }, [products])
+
   return (
     <>
       <motion.section
-        className="hero"
+        className="hero hero-commerce"
         initial={reduceMotion ? false : { opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
         <div className="hero-content">
-          <span className="eyebrow">Nouvelle sélection · VAPE MARKET</span>
-          <h1>Trouvez votre prochain coup de cœur.</h1>
+          <span className="hero-badge">VAPE MARKET • LE MEILLEUR CHOIX DE PUFFS</span>
+          <h1>Découvrez notre collection de Puffs</h1>
           <p>
-            Une boutique pensée pour aller à l’essentiel : de belles références,
-            des informations claires et une commande en quelques clics.
+            Des marques premium,
+            des saveurs incroyables
+            et une qualité garantie.
           </p>
           <div className="hero-actions">
             <motion.button
@@ -84,82 +117,81 @@ function HomePage({ onNavigate }) {
               whileHover={reduceMotion ? undefined : { scale: 1.02 }}
               whileTap={reduceMotion ? undefined : { scale: 0.98 }}
             >
-              Explorer la boutique
+              Acheter maintenant
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </motion.button>
             <button className="button button-ghost-light" type="button" onClick={() => onNavigate('categories')}>
-              Parcourir les catégories
+              Découvrir les catégories
             </button>
           </div>
-          <div className="hero-note">
-            <span className="hero-note-dot" aria-hidden="true" />
-            Livraison suivie · Commande sécurisée · Support à l’écoute
-          </div>
         </div>
 
-        <div className="hero-visual" aria-hidden="true">
-          <div className="hero-grid" />
-          <div className="hero-orb hero-orb-one" />
-          <div className="hero-orb hero-orb-two" />
-          <motion.div
-            className="hero-card hero-card-main"
-            initial={reduceMotion ? false : { opacity: 0, y: 24, rotate: -2 }}
-            animate={{ opacity: 1, y: 0, rotate: -2 }}
-            transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="hero-card-top">
-              <span className="hero-card-label">Sélection du moment</span>
-              <span className="hero-card-pill">Nouveau</span>
-            </div>
-            <div className="hero-product-shape">
-              <div className="hero-product-cap" />
-              <div className="hero-product-body">
-                <span>VAPE</span>
-                <strong>MARKET</strong>
-              </div>
-            </div>
-            <div className="hero-card-bottom">
-              <div>
-                <span>À découvrir</span>
-                <strong>La collection</strong>
-              </div>
-              <span className="hero-card-arrow">↗</span>
-            </div>
-          </motion.div>
-          <motion.div
-            className="hero-card hero-card-float"
-            initial={reduceMotion ? false : { opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <span className="hero-float-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="m5 12 4 4L19 6" />
-              </svg>
-            </span>
-            <div>
-              <strong>Qualité vérifiée</strong>
-              <span>Une sélection fiable</span>
-            </div>
-          </motion.div>
-        </div>
+        <div className="hero-glow" aria-hidden="true" />
       </motion.section>
 
-      <section className="trust-strip" aria-label="Les avantages VAPE MARKET">
-        <span>Une expérience pensée pour vous</span>
-        <span className="trust-separator" aria-hidden="true" />
-        <span>Produits disponibles en temps réel</span>
-        <span className="trust-separator" aria-hidden="true" />
-        <span>Suivi de commande simplifié</span>
+      {brands.length > 0 && (
+        <section id="marques" className="section-block brand-section">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow eyebrow-dark">Marques</span>
+              <h2>Nos marques</h2>
+            </div>
+          </div>
+          <div className="brand-showcase">
+            {brands.map((brand, index) => (
+              <motion.button
+                type="button"
+                className="brand-showcase-card"
+                key={brand.slug}
+                onClick={() => navigate(`/products?brand=${encodeURIComponent(brand.slug)}`)}
+                initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                whileHover={reduceMotion ? undefined : { y: -4 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.45, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <img
+                  className="brand-showcase-image"
+                  src={brand.logo}
+                  alt={brand.name}
+                />
+                <strong>{brand.name}</strong>
+                <span>{brand.count} produit{brand.count > 1 ? 's' : ''}</span>
+              </motion.button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="assurance-section">
+        <div className="assurance-grid">
+          {assurances.map((item, index) => (
+            <motion.article
+              className="assurance-card"
+              key={item.title}
+              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.45, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <span className="assurance-icon">{item.icon}</span>
+              <div>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            </motion.article>
+          ))}
+        </div>
       </section>
 
-      <section className="section-block">
+      <section id="produits" className="section-block">
         <div className="section-heading">
           <div>
-            <span className="eyebrow eyebrow-dark">La sélection</span>
-            <h2>Produits populaires</h2>
+            <span className="eyebrow eyebrow-dark">Meilleures ventes</span>
+            <h2>Les plus populaires</h2>
           </div>
           <button className="text-link" type="button" onClick={() => onNavigate('products')}>
             Tout voir
@@ -170,34 +202,53 @@ function HomePage({ onNavigate }) {
         </div>
         {status === 'loading' && <LoadingSpinner />}
         {status === 'error' && <p className="notice notice-error" role="alert">{error}</p>}
-        {status === 'ready' && featuredProducts.length === 0 && (
+        {status === 'ready' && bestSellers.length === 0 && (
           <p className="notice">La sélection arrive bientôt.</p>
         )}
-        {status === 'ready' && featuredProducts.length > 0 && <ProductGrid products={featuredProducts} />}
+        {status === 'ready' && bestSellers.length > 0 && <ProductGrid products={bestSellers} />}
       </section>
 
-      <section className="feature-section">
+
+
+      <section id="apropos" className="section-block about-section">
         <div className="section-heading">
           <div>
-            <span className="eyebrow eyebrow-dark">Pourquoi nous choisir</span>
-            <h2>Simple, rapide, soigné.</h2>
+            <span className="eyebrow eyebrow-dark">À propos</span>
+            <h2>VAPE MARKET</h2>
           </div>
         </div>
-        <div className="feature-grid">
-          {features.map((feature, index) => (
-            <motion.article
-              className="feature-card"
-              key={feature.title}
-              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.45, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <span className="feature-icon">{feature.icon}</span>
-              <h3>{feature.title}</h3>
-              <p>{feature.description}</p>
-            </motion.article>
-          ))}
+        <div className="about-grid">
+          <p>
+            VAPE MARKET propose une sélection de puffs et produits vape premium,
+            avec une expérience d’achat simple, rapide et sécurisée.
+          </p>
+          <p>
+            Notre objectif : offrir des produits authentiques, un support client
+            réactif et une livraison partout en Tunisie.
+          </p>
+        </div>
+      </section>
+
+      <section id="contact" className="section-block contact-section">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow eyebrow-dark">Contact</span>
+            <h2>Nous contacter</h2>
+          </div>
+        </div>
+        <div className="contact-grid">
+          <a className="contact-card" href="mailto:vapemarket.tn@gmail.com">
+            <strong>Email</strong>
+            <span>vapemarket.tn@gmail.com</span>
+          </a>
+          <a className="contact-card" href="tel:+21699991944">
+            <strong>Téléphone</strong>
+            <span>+216 99 991 944</span>
+          </a>
+          <div className="contact-card">
+            <strong>Horaires</strong>
+            <span>Lun - Sam : 9h - 18h</span>
+          </div>
         </div>
       </section>
     </>
