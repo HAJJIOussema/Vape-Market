@@ -127,14 +127,18 @@ function ProductDetailsPage() {
           {selectedVariant?.name && (
             <span className="product-image-flavor">{selectedVariant.name}</span>
           )}
-          {selectedVariant?.name && (
+          {selectedVariant?.name && brandName?.toLowerCase() !== 'mazaya' && (
             <span className="product-image-label">{selectedVariant.name}</span>
           )}
         </div>
 
         <div className="product-details-body">
           <span className="product-brand">{brandName || 'Marque indisponible'}</span>
-          <h1>{product.name}</h1>
+          <h1>
+            {selectedVariant?.name && !product.name.toLowerCase().includes(selectedVariant.name.toLowerCase())
+              ? `${product.name} ${selectedVariant.name}`
+              : product.name}
+          </h1>
           <span className="product-details-category">{categoryName || 'Catégorie indisponible'}</span>
           <p className="product-description">{product.description || 'Aucune description disponible.'}</p>
 

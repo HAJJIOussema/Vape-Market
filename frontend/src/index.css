@@ -1217,6 +1217,10 @@ p {
   border-color: var(--line-strong);
 }
 
+.brand-showcase-card:hover .category-discover {
+  color: var(--ink);
+}
+
 .brand-showcase-image {
   width: 96px;
   height: 96px;

@@ -14,7 +14,7 @@ function Footer() {
           <div>
             <span className="footer-heading">Boutique</span>
             <Link to="/products">Produits</Link>
-            <Link to="/categories">Catégories</Link>
+            <Link to="/marques">Marques</Link>
             <Link to="/cart">Panier</Link>
           </div>
           <div>
