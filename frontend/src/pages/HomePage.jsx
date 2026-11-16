@@ -122,8 +122,8 @@ function HomePage({ onNavigate }) {
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </motion.button>
-            <button className="button button-ghost-light" type="button" onClick={() => onNavigate('marques')}>
-              Découvrir les marques
+            <button className="button button-ghost-light" type="button" onClick={() => onNavigate('categories')}>
+              Découvrir les catégories
             </button>
           </div>
         </div>

@@ -3,7 +3,9 @@ import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
 import { getProducts } from '../services/productService.js'
 
-function ProductsPage({ searchQuery = '', categoryId = '', brandSlug = '' }) {
+import { getCatalogFamily } from '../utils/catalogFamilies.js'
+
+function ProductsPage({ searchQuery = '', categoryId = '', brandSlug = '', familySlug = '' }) {
   const [products, setProducts] = useState([])
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
@@ -34,6 +36,11 @@ function ProductsPage({ searchQuery = '', categoryId = '', brandSlug = '' }) {
   const visibleProducts = useMemo(() => {
     let result = products
 
+    const family = familySlug ? getCatalogFamily(familySlug) : null
+    if (family) {
+      result = result.filter((product) => family.products.includes(product.slug))
+    }
+
     if (brandSlug) {
       const normalizedBrand = brandSlug.trim().toLocaleLowerCase()
       result = result.filter((product) => {
@@ -61,7 +68,7 @@ function ProductsPage({ searchQuery = '', categoryId = '', brandSlug = '' }) {
         typeof value === 'string' && value.toLocaleLowerCase().includes(normalizedQuery)
       ))
     })
-  }, [products, searchQuery, brandSlug])
+  }, [products, searchQuery, brandSlug, familySlug])
 
   return (
     <section className="catalog-page">

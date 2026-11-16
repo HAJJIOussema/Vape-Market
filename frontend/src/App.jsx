@@ -26,6 +26,7 @@ function RoutedApp() {
   const searchQuery = searchParams.get('q') || ''
   const categoryId = searchParams.get('category_id') || ''
   const brandSlug = searchParams.get('brand') || ''
+  const familySlug = searchParams.get('family') || ''
 
   function navigateTo(page) {
     navigate(page === 'home' ? '/' : `/${page}`)
@@ -48,7 +49,7 @@ function RoutedApp() {
       >
         <Routes>
           <Route path="/" element={<HomePage onNavigate={navigateTo} />} />
-          <Route path="/products" element={<ProductsPage searchQuery={searchQuery} categoryId={categoryId} brandSlug={brandSlug} />} />
+          <Route path="/products" element={<ProductsPage searchQuery={searchQuery} categoryId={categoryId} brandSlug={brandSlug} familySlug={familySlug} />} />
           <Route path="/products/:slug" element={<ProductDetailsPage key={location.pathname} />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/marques" element={<BrandsPage />} />
