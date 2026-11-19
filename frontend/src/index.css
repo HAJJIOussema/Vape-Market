@@ -227,6 +227,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px;
   padding: 8px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -381,8 +382,8 @@ p {
 
 .search-clear,
 .search-submit {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -472,8 +473,8 @@ p {
 }
 
 .menu-toggle {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 13px;
   display: none;
   place-items: center;
@@ -524,6 +525,7 @@ p {
 .mobile-nav .nav-link {
   color: #ffffff;
   background: rgba(255, 255, 255, 0.05);
+  min-height: 44px;
 }
 
 .mobile-nav-brand {
@@ -620,6 +622,7 @@ p {
   font-weight: 700;
   line-height: 1;
   box-shadow: var(--shadow-glow);
+  min-height: 44px;
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
@@ -902,7 +905,7 @@ p {
 }
 
 .hero {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .hero p {
@@ -1769,6 +1772,7 @@ p {
   --flavor-glow: rgba(183, 255, 32, 0.34);
   position: relative;
   isolation: isolate;
+  overflow: hidden;
   border-radius: 30px;
 }
 
@@ -2069,6 +2073,7 @@ p {
 }
 
 .model-option {
+  min-height: 44px;
   padding: 8px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -2254,6 +2259,13 @@ p {
     right: 12px;
     max-width: calc(100% - 132px);
     font-size: 0.72rem;
+  }
+
+  .product-image-label {
+    left: 12px;
+    bottom: 12px;
+    font-size: 1rem;
+    max-width: calc(100% - 24px);
   }
 
   .variant-option {
@@ -3268,6 +3280,7 @@ p {
 
 .admin-stock-adjust input {
   width: 100%;
+  min-height: 44px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -3325,6 +3338,7 @@ p {
 .admin-form textarea,
 .admin-form select {
   width: 100%;
+  min-height: 44px;
   padding: 11px 12px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -3894,6 +3908,12 @@ p {
     display: none;
   }
 
+  .admin-toolbar input,
+  .admin-toolbar select {
+    min-width: 0;
+    width: 100%;
+  }
+
   .admin-nav-link {
     justify-content: center;
   }
@@ -3923,6 +3943,10 @@ p {
   .count-pill {
     height: 34px;
     min-width: 34px;
+  }
+
+  .order-card {
+    grid-template-columns: 1fr;
   }
 }
 
