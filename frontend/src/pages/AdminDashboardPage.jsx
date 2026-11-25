@@ -123,6 +123,10 @@ function AdminDashboardPage() {
     loadSection(false)
   }, [loadSection])
 
+  // Refresh a section's data without the loading spinner: showing the spinner
+  // unmounts the section and loses its local state (e.g. the product being edited).
+  const reloadSection = useCallback(() => loadSection(false), [loadSection])
+
   function navigateSection(nextSection) {
     navigate(nextSection === 'dashboard' ? '/admin' : `/admin/${nextSection}`)
   }
@@ -242,7 +246,7 @@ function AdminDashboardPage() {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           >
             {currentSection === 'dashboard' && <DashboardSection data={data} onNavigate={navigateSection} />}
-            {currentSection === 'products' && <ProductsSection products={data.products} onReload={loadSection} />}
+            {currentSection === 'products' && <ProductsSection products={data.products} onReload={reloadSection} />}
             {currentSection === 'categories' && (
               <CatalogSection
                 title="Catégories"
@@ -253,7 +257,7 @@ function AdminDashboardPage() {
                 createItem={createAdminCategory}
                 updateItem={updateAdminCategory}
                 deleteItem={deleteAdminCategory}
-                onReload={loadSection}
+                onReload={reloadSection}
               />
             )}
             {currentSection === 'brands' && (
@@ -266,11 +270,11 @@ function AdminDashboardPage() {
                 createItem={createAdminBrand}
                 updateItem={updateAdminBrand}
                 deleteItem={deleteAdminBrand}
-                onReload={loadSection}
+                onReload={reloadSection}
               />
             )}
-            {currentSection === 'stock' && <StockSection data={data} onReload={loadSection} />}
-            {currentSection === 'orders' && <OrdersSection orders={data.orders} onReload={loadSection} />}
+            {currentSection === 'stock' && <StockSection data={data} onReload={reloadSection} />}
+            {currentSection === 'orders' && <OrdersSection orders={data.orders} onReload={reloadSection} />}
             {currentSection === 'users' && <UsersSection users={data.users} />}
           </motion.div>
         )}
@@ -335,9 +339,16 @@ function DashboardSection({ data, onNavigate }) {
   )
 }
 
+const PRODUCT_STATUS_LABELS = {
+  draft: 'Brouillon (non visible)',
+  active: 'Publié',
+  inactive: 'Masqué',
+  archived: 'Archivé',
+}
+
 function ProductsSection({ products = [], onReload }) {
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', slug: '', description: '', category_id: '', brand_id: '', price_tnd: '', stock: '' })
+  const [form, setForm] = useState({ name: '', slug: '', description: '', category_id: '', brand_id: '', price_tnd: '', stock: '', status: 'draft' })
   const [categories, setCategories] = useState([])
   const [brands, setBrands] = useState([])
   const [variants, setVariants] = useState([])
@@ -347,6 +358,7 @@ function ProductsSection({ products = [], onReload }) {
   const [editingVariant, setEditingVariant] = useState(null)
   const [variantError, setVariantError] = useState('')
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     Promise.all([getAdminCategories(), getAdminBrands()])
@@ -390,6 +402,7 @@ function ProductsSection({ products = [], onReload }) {
       brand_id: product.brand_id || '',
       price_tnd: primaryVariant ? primaryVariant.price_tnd : '',
       stock: primaryVariant ? primaryVariant.on_hand : '',
+      status: product.status || 'draft',
     })
   }
 
@@ -452,9 +465,14 @@ function ProductsSection({ products = [], onReload }) {
       description: form.description,
       ...(form.category_id ? { category_id: form.category_id } : {}),
       ...(form.brand_id ? { brand_id: form.brand_id } : {}),
+      // Always saved as draft first: the database refuses an active product
+      // without an active default variant, which is created just after.
       ...(!editing ? { status: 'draft' } : {}),
     }
+    setError('')
+    setMessage('')
     try {
+      let savedProduct = editing
       if (editing) {
         await updateAdminProduct(editing.id, payload)
         const primaryVariant = variants.length === 1 ? variants[0] : null
@@ -477,6 +495,7 @@ function ProductsSection({ products = [], onReload }) {
       } else {
         const response = await createAdminProduct(payload)
         const createdProduct = response?.data || response
+        savedProduct = createdProduct
         setEditing(createdProduct)
         setForm({
           name: createdProduct.name || payload.name,
@@ -486,6 +505,7 @@ function ProductsSection({ products = [], onReload }) {
           brand_id: createdProduct.brand_id || payload.brand_id || '',
           price_tnd: form.price_tnd,
           stock: form.stock,
+          status: form.status,
         })
         if (form.price_tnd !== '' && form.stock !== '') {
           await createAdminProductVariant(createdProduct.id, {
@@ -499,9 +519,15 @@ function ProductsSection({ products = [], onReload }) {
         }
         await loadVariants(createdProduct.id)
       }
+      if (form.status && form.status !== savedProduct.status) {
+        const updated = await updateAdminProduct(savedProduct.id, { status: form.status })
+        setEditing(updated?.data || updated || { ...savedProduct, status: form.status })
+      }
+      setMessage(form.status === 'active' ? 'Produit enregistré et publié.' : 'Produit enregistré.')
       onReload()
     } catch (requestError) {
       setError(requestError.message || 'Impossible d’enregistrer le produit.')
+      onReload()
     }
   }
 
@@ -580,6 +606,15 @@ function ProductsSection({ products = [], onReload }) {
               Slug
               <input required placeholder="nom-du-produit" value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} />
             </label>
+            <label>
+              Statut
+              <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+                {Object.entries(PRODUCT_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              {form.status === 'active' && <small>Visible dans la boutique (une variante active par défaut est requise).</small>}
+            </label>
             <label className="admin-form-wide">
               Description
               <textarea placeholder="Description du produit" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
@@ -587,9 +622,10 @@ function ProductsSection({ products = [], onReload }) {
           </div>
           <div className="admin-form-actions">
             <button className="button" type="submit">{editing ? 'Modifier' : 'Créer'}</button>
-            {editing && <button type="button" onClick={() => { setEditing(null); setVariants([]); setEditingVariant(null); setForm({ name: '', slug: '', description: '', category_id: '', brand_id: '', price_tnd: '', stock: '' }); setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active' }) }}>Annuler</button>}
+            {editing && <button type="button" onClick={() => { setEditing(null); setVariants([]); setEditingVariant(null); setForm({ name: '', slug: '', description: '', category_id: '', brand_id: '', price_tnd: '', stock: '', status: 'draft' }); setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active' }) }}>Annuler</button>}
           </div>
           {error && <p className="form-message is-error" role="alert">{error}</p>}
+          {message && !error && <p className="form-message is-success" role="status">{message}</p>}
         </form>
       </div>
 
@@ -694,7 +730,10 @@ function ProductsSection({ products = [], onReload }) {
           </div>
           {products.map((product) => (
             <div className="admin-row admin-products-row" key={product.id}>
-              <span data-label="Nom"><strong>{product.name}</strong></span>
+              <span data-label="Nom">
+                <strong>{product.name}</strong>
+                <small>{PRODUCT_STATUS_LABELS[product.status] || product.status}</small>
+              </span>
               <span data-label="Slug">{product.slug}</span>
               <span className="admin-row-actions" data-label="Actions">
                 <button type="button" onClick={() => startEdit(product)}>Modifier</button>
