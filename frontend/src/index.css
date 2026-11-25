@@ -76,6 +76,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Slightly smaller overall scale on tablets and computers (like browser
+   zoom at 90%). Phones keep their own layout. */
+@media (min-width: 761px) {
+  body {
+    zoom: 0.9;
+  }
+}
+
 img,
 svg {
   display: block;
