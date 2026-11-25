@@ -18,8 +18,13 @@ activée avant la validation des obligations légales et réglementaires.
 ## Stack prévue
 
 - **Frontend :** React, Vite, Tailwind CSS, React Router et Lucide React ;
-- **Backend :** Node.js, Express et API REST ;
+- **Backend :** aucun serveur à déployer. Le frontend appelle Supabase
+  directement (`supabase-js`) ; les règles métier (prix, stock, commandes,
+  rôles) sont appliquées dans PostgreSQL par les politiques RLS et des
+  fonctions `SECURITY DEFINER` (`checkout`, `confirm_order`, …). Le dossier
+  `backend/` (Express) n'est plus utilisé par le frontend ;
 - **Données et authentification :** Supabase PostgreSQL, Supabase Auth et RLS ;
+- **Hébergement :** Vercel (site statique) ;
 - **Tests :** Vitest, React Testing Library, Playwright et Postman.
 
 Ces choix restent prévisionnels et seront confirmés pendant la conception
@@ -29,8 +34,8 @@ technique.
 
 ```text
 VAPE-MARKET/
-├── frontend/
-├── backend/
+├── frontend/          # application déployée (Vercel)
+├── backend/           # ancienne API Express, plus utilisée
 ├── supabase/
 │   ├── migrations/
 │   └── seed.sql
@@ -71,6 +76,39 @@ npm run lint
 npm run build
 npm run preview
 ```
+
+## Déploiement (Supabase + Vercel)
+
+1. **Base de données** — appliquer les migrations sur le projet Supabase
+   (après les avoir relues) :
+
+   ```bash
+   supabase link --project-ref <ref>
+   supabase db push
+   ```
+
+   Tester ensuite les fonctions de commande sur une base de test :
+   `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/guest_checkout_orders.sql`
+   (tout est annulé par un `rollback`).
+2. **Vercel** — importer le dépôt, choisir **Root Directory : `frontend`**
+   (Vite est détecté ; `frontend/vercel.json` gère les routes de la SPA), puis
+   définir les variables d'environnement :
+   - `VITE_SUPABASE_URL` — URL du projet ;
+   - `VITE_SUPABASE_ANON_KEY` — clé *anon / publishable* (publique) ;
+   - `VITE_STORAGE_BUCKET` — `product-images` par défaut.
+
+   Ne jamais mettre la clé `service_role` dans Vercel : tout ce qui commence
+   par `VITE_` est visible dans le navigateur.
+3. **Supabase Auth** — dans *Authentication > URL Configuration*, mettre l'URL
+   Vercel comme *Site URL* et l'ajouter aux *Redirect URLs* (confirmation
+   d'e-mail).
+4. **Administrateurs** — promouvoir un compte depuis l'éditeur SQL Supabase :
+   `update public.profiles set role = 'super_admin' where id = '<uuid>';`
+   (depuis le site, seul un `super_admin` peut changer un rôle).
+
+Commandes invitées : `public.checkout` accepte les visiteurs non connectés,
+limite à 3 commandes par heure et par téléphone/e-mail, et renvoie un code de
+suivi affiché une seule fois (page `/suivi-commande`).
 
 ## Configuration
 

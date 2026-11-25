@@ -1,23 +1,47 @@
-import { apiRequest } from './api.js'
+import { run, supabase } from './db.js'
 
-export const getOrders = () => apiRequest('/orders')
+export { getOrders } from './accountService.js'
+
 /**
- * Create an order. Works for guests and logged-in customers: the backend
- * attaches the order to the account when a session exists.
+ * Place an order (guest or logged-in). public.checkout validates the input
+ * and computes prices, totals and shipping in the database; for a new guest
+ * order it returns a one-time guest_access_token.
  */
-export const createOrder = (order, idempotencyKey) => apiRequest('/orders', {
-  method: 'POST',
-  headers: { 'Idempotency-Key': idempotencyKey },
-  body: JSON.stringify(order),
-})
-export const lookupGuestOrder = (orderNumber, accessToken) => apiRequest('/orders/guest/lookup', {
-  method: 'POST',
-  auth: false,
-  body: JSON.stringify({ order_number: orderNumber, access_token: accessToken }),
-})
-export const getAdminOrders = () => apiRequest('/admin/orders?page_size=100')
-export const confirmAdminOrder = (orderId) => apiRequest(`/admin/orders/${orderId}/confirm`, { method: 'POST' })
-export const cancelAdminOrder = (orderId) => apiRequest(`/admin/orders/${orderId}/cancel`, { method: 'POST' })
+export async function createOrder(order, idempotencyKey) {
+  const data = await run(supabase.rpc('checkout', {
+    p_idempotency_key: idempotencyKey,
+    p_items: order.items,
+    p_customer_email: order.customer_email,
+    p_customer_phone: order.customer_phone,
+    p_shipping_address: order.shipping_address,
+  }), 'Impossible de créer la commande.')
+  return { data }
+}
+
+export async function lookupGuestOrder(orderNumber, accessToken) {
+  const data = await run(supabase.rpc('lookup_guest_order', {
+    p_order_number: orderNumber,
+    p_access_token: accessToken,
+  }), 'Impossible de retrouver la commande.')
+  if (!data) throw Object.assign(new Error('Aucune commande ne correspond à ce numéro et ce code.'), { status: 404 })
+  return { data }
+}
+
+export async function getAdminOrders() {
+  const data = await run(
+    supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }).limit(100),
+    'Impossible de charger les commandes.',
+  )
+  return { data }
+}
+
+export async function confirmAdminOrder(orderId) {
+  return { data: await run(supabase.rpc('confirm_order', { p_order_id: orderId }), 'Impossible de confirmer la commande.') }
+}
+
+export async function cancelAdminOrder(orderId) {
+  return { data: await run(supabase.rpc('cancel_order', { p_order_id: orderId }), 'Impossible d’annuler la commande.') }
+}
 
 /** RFC 4122 v4 UUID; crypto.randomUUID is missing on plain-http LAN URLs. */
 export function createIdempotencyKey() {

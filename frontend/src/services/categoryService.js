@@ -1,3 +1,9 @@
-import { apiRequest } from './api.js'
+import { run, supabase } from './db.js'
 
-export const getCategories = () => apiRequest('/categories')
+export async function getCategories() {
+  const data = await run(
+    supabase.from('categories').select('*').eq('is_active', true).order('sort_order').order('name'),
+    'Impossible de charger les catégories.',
+  )
+  return { data }
+}
