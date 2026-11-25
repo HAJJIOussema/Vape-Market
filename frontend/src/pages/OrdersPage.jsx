@@ -1,27 +1,59 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
-import StatusBadge from '../components/StatusBadge.jsx'
+import OrderSummary from '../components/OrderSummary.jsx'
+import StatusBadge, { statusLabel } from '../components/StatusBadge.jsx'
 import { getOrders } from '../services/accountService.js'
+
+const ORDER_REFRESH_MS = 15000
 
 function OrdersPage() {
   const [orders, setOrders] = useState([])
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
+  const [openId, setOpenId] = useState(null)
+  const [updates, setUpdates] = useState([])
+  const knownStatuses = useRef(null)
   const reduceMotion = useReducedMotion()
 
-  useEffect(() => {
-    getOrders()
-      .then((response) => {
-        setOrders(response.data || response || [])
-        setStatus('ready')
-      })
-      .catch((requestError) => {
+  // Load the orders, and on later refreshes report the ones whose status changed.
+  const refresh = useCallback(async (firstLoad = false) => {
+    try {
+      const response = await getOrders()
+      const rows = response.data || response || []
+      const previous = knownStatuses.current
+      if (previous) {
+        const changed = rows.filter((order) => previous.has(order.id) && previous.get(order.id) !== order.status)
+        if (changed.length) {
+          setUpdates(changed.map((order) => `Commande ${order.order_number} : ${statusLabel(order.status)}`))
+        }
+      }
+      knownStatuses.current = new Map(rows.map((order) => [order.id, order.status]))
+      setOrders(rows)
+      setStatus('ready')
+    } catch (requestError) {
+      // A failed background refresh keeps the list already shown.
+      if (firstLoad) {
         setError(requestError.message || 'Impossible de charger vos commandes.')
         setStatus('error')
-      })
+      }
+    }
   }, [])
+
+  useEffect(() => {
+    refresh(true)
+    // Status changes made by the shop appear without reloading the page.
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') refresh()
+    }, ORDER_REFRESH_MS)
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [refresh])
 
   if (status === 'loading') return <LoadingSpinner />
   if (status === 'error') return <p className="notice notice-error" role="alert">{error}</p>
@@ -41,6 +73,14 @@ function OrdersPage() {
           </svg>
         </Link>
       </div>
+
+      {updates.length > 0 && (
+        <div className="notice order-updates" role="status" aria-live="polite">
+          <strong>Statut mis à jour</strong>
+          <ul>{updates.map((text) => <li key={text}>{text}</li>)}</ul>
+          <button type="button" className="text-link" onClick={() => setUpdates([])}>OK</button>
+        </div>
+      )}
 
       {orders.length === 0 ? (
         <div className="empty-state">
@@ -72,8 +112,21 @@ function OrdersPage() {
               </div>
               <div className="order-card-total">
                 <span>Total</span>
-                <strong>{order.total_tnd} TND</strong>
+                <strong>{Number(order.total_tnd).toFixed(3)} TND</strong>
               </div>
+              <button
+                type="button"
+                className="text-link order-card-toggle"
+                aria-expanded={openId === order.id}
+                onClick={() => setOpenId(openId === order.id ? null : order.id)}
+              >
+                {openId === order.id ? 'Masquer le détail' : 'Voir le détail'}
+              </button>
+              {openId === order.id && (
+                <div className="order-card-details">
+                  <OrderSummary order={order} />
+                </div>
+              )}
             </motion.article>
           ))}
         </div>

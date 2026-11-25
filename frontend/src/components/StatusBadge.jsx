@@ -9,12 +9,17 @@ const statusLabels = {
   refunded: 'Remboursée',
 }
 
+/** Human-readable (French) label for an order status. */
+export function statusLabel(status) {
+  return statusLabels[status] || status || 'Inconnu'
+}
+
 function StatusBadge({ status }) {
   const value = statusLabels[status] ? status : 'pending'
   return (
     <span className={`status-badge status-${value}`}>
       <span className="status-dot" aria-hidden="true" />
-      {statusLabels[status] || status || 'Inconnu'}
+      {statusLabel(status)}
     </span>
   )
 }

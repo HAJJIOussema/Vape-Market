@@ -1069,6 +1069,7 @@ function OrdersSection({ orders = [], onReload }) {
 }
 
 function OrdersTable({ orders = [], onConfirm, onCancel }) {
+  const [openId, setOpenId] = useState(null)
   return (
     <div className="admin-table">
       <div className="admin-row admin-orders-row admin-row-head">
@@ -1078,27 +1079,146 @@ function OrdersTable({ orders = [], onConfirm, onCancel }) {
         <span>Statut / actions</span>
       </div>
       {orders.map((order) => (
-        <div className="admin-row admin-orders-row" key={order.id}>
-          <span data-label="Commande">
-            <strong>{order.order_number}</strong>
-            <small>{new Date(order.created_at).toLocaleDateString('fr-FR')}</small>
-          </span>
-          <span data-label="Client">
-            {order.shipping_address_snapshot?.recipient_name || order.customer_email}
-            <small>{order.customer_phone}</small>
-          </span>
-          <span data-label="Montant">{Number(order.total_tnd).toFixed(3)} TND</span>
-          <span className="admin-row-actions" data-label="Statut">
-            <StatusBadge status={order.status} />
-            {order.status === 'pending' && onConfirm && (
-              <>
-                <button type="button" className="button button-small" onClick={() => onConfirm(order.id)}>Confirmer</button>
-                <button type="button" className="danger-text" onClick={() => onCancel(order.id)}>Annuler</button>
-              </>
-            )}
-          </span>
+        <div className="admin-order-block" key={order.id}>
+          <div className="admin-row admin-orders-row">
+            <span data-label="Commande">
+              <strong>{order.order_number}</strong>
+              <small>{formatAdminDateTime(order.created_at)}</small>
+            </span>
+            <span data-label="Client">
+              {order.shipping_address_snapshot?.recipient_name || order.customer_email}
+              <small>{order.customer_phone}</small>
+            </span>
+            <span data-label="Montant">{Number(order.total_tnd).toFixed(3)} TND</span>
+            <span className="admin-row-actions" data-label="Statut">
+              <StatusBadge status={order.status} />
+              <button
+                type="button"
+                aria-expanded={openId === order.id}
+                onClick={() => setOpenId(openId === order.id ? null : order.id)}
+              >
+                {openId === order.id ? 'Masquer' : 'Détails'}
+              </button>
+              {order.status === 'pending' && onConfirm && (
+                <>
+                  <button type="button" className="button button-small" onClick={() => onConfirm(order.id)}>Confirmer</button>
+                  <button type="button" className="danger-text" onClick={() => onCancel(order.id)}>Annuler</button>
+                </>
+              )}
+            </span>
+          </div>
+          {openId === order.id && <AdminOrderDetails order={order} />}
         </div>
       ))}
+    </div>
+  )
+}
+
+const PAYMENT_METHOD_LABELS = { cash_on_delivery: 'Paiement à la livraison' }
+const PAYMENT_STATUS_LABELS = { pending: 'En attente', paid: 'Payé', failed: 'Échoué', refunded: 'Remboursé' }
+
+function formatAdminDateTime(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+/** Everything about one order and its customer (account details for logged-in customers). */
+function AdminOrderDetails({ order }) {
+  const address = order.shipping_address_snapshot || {}
+  const items = order.order_items || []
+  const [customer, setCustomer] = useState(null)
+  const [customerError, setCustomerError] = useState('')
+
+  useEffect(() => {
+    if (!order.profile_id) return undefined
+    let active = true
+    getAdminUser(order.profile_id)
+      .then((response) => { if (active) setCustomer(response.data || response) })
+      .catch((requestError) => { if (active) setCustomerError(requestError.message || 'Compte client introuvable.') })
+    return () => { active = false }
+  }, [order.profile_id])
+
+  const previousOrders = (customer?.orders || []).filter((other) => other.id !== order.id)
+
+  return (
+    <div className="admin-order-details">
+      <section>
+        <h4>Client</h4>
+        <dl>
+          <dt>Nom</dt><dd>{address.recipient_name || customer?.full_name || '—'}</dd>
+          <dt>Téléphone</dt><dd>{order.customer_phone ? <a href={`tel:${order.customer_phone}`}>{order.customer_phone}</a> : '—'}</dd>
+          <dt>E-mail</dt><dd>{order.customer_email ? <a href={`mailto:${order.customer_email}`}>{order.customer_email}</a> : '—'}</dd>
+          <dt>Type</dt><dd>{order.profile_id ? 'Compte client' : 'Invité (sans compte)'}</dd>
+          {order.profile_id && (
+            <>
+              <dt>Nom du compte</dt><dd>{customer ? (customer.full_name || '—') : (customerError ? '—' : '…')}</dd>
+              <dt>Téléphone du compte</dt><dd>{customer?.phone || '—'}</dd>
+              <dt>Client depuis</dt><dd>{customer ? formatAdminDate(customer.created_at) : '…'}</dd>
+              <dt>Autres commandes</dt>
+              <dd>
+                {customer
+                  ? `${previousOrders.length} (total ${previousOrders.reduce((sum, other) => sum + Number(other.total_tnd || 0), 0).toFixed(3)} TND)`
+                  : '…'}
+              </dd>
+            </>
+          )}
+        </dl>
+        {customerError && <p className="form-message is-error" role="alert">{customerError}</p>}
+      </section>
+
+      <section>
+        <h4>Livraison</h4>
+        <dl>
+          <dt>Destinataire</dt><dd>{address.recipient_name || '—'}</dd>
+          <dt>Téléphone</dt><dd>{address.phone || order.customer_phone || '—'}</dd>
+          <dt>Adresse</dt><dd>{address.address_line || '—'}</dd>
+          <dt>Ville</dt><dd>{address.city || '—'}</dd>
+          <dt>Gouvernorat</dt><dd>{address.governorate || '—'}</dd>
+          <dt>Code postal</dt><dd>{address.postal_code || '—'}</dd>
+        </dl>
+      </section>
+
+      <section>
+        <h4>Commande</h4>
+        <dl>
+          <dt>Numéro</dt><dd>{order.order_number}</dd>
+          <dt>Statut</dt><dd><StatusBadge status={order.status} /></dd>
+          <dt>Passée le</dt><dd>{formatAdminDateTime(order.created_at)}</dd>
+          <dt>Mise à jour</dt><dd>{formatAdminDateTime(order.updated_at)}</dd>
+          <dt>Paiement</dt>
+          <dd>
+            {PAYMENT_METHOD_LABELS[order.payment_method] || order.payment_method || '—'}
+            {' · '}
+            {PAYMENT_STATUS_LABELS[order.payment_status] || order.payment_status || '—'}
+          </dd>
+        </dl>
+      </section>
+
+      <section className="admin-order-details-items">
+        <h4>Articles</h4>
+        <table>
+          <thead>
+            <tr><th>Produit</th><th>SKU</th><th>Prix unitaire</th><th>Qté</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id}>
+                <td>{item.product_name_snapshot}<small>{item.variant_name_snapshot}</small></td>
+                <td>{item.sku_snapshot || '—'}</td>
+                <td>{Number(item.unit_price_tnd).toFixed(3)} TND</td>
+                <td>{item.quantity}</td>
+                <td>{Number(item.line_total_tnd).toFixed(3)} TND</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr><td colSpan={4}>Sous-total</td><td>{Number(order.subtotal_tnd).toFixed(3)} TND</td></tr>
+            <tr><td colSpan={4}>Livraison</td><td>{Number(order.shipping_cost_tnd) ? `${Number(order.shipping_cost_tnd).toFixed(3)} TND` : 'Offerte'}</td></tr>
+            <tr><td colSpan={4}><strong>Total à encaisser</strong></td><td><strong>{Number(order.total_tnd).toFixed(3)} TND</strong></td></tr>
+          </tfoot>
+        </table>
+      </section>
     </div>
   )
 }
