@@ -76,11 +76,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Slightly smaller overall scale on tablets and computers (like browser
-   zoom at 90%). Phones keep their own layout. */
+/* Smaller overall scale on tablets and computers (like browser zoom at
+   80%). Phones keep their own layout. */
 @media (min-width: 761px) {
   body {
-    zoom: 0.9;
+    zoom: 0.8;
   }
 }
 
@@ -4236,4 +4236,15 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
+}
+
+/* Desktop: use the width freed by the smaller scale (zoom 0.8 on body)
+   instead of wider side margins. Kept last so it overrides the base widths. */
+@media (min-width: 761px) {
+  .header-inner,
+  .main-content,
+  .footer-inner,
+  .footer-bottom {
+    width: min(1440px, calc(100% - 48px));
+  }
 }
