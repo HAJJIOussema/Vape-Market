@@ -6,14 +6,13 @@ import BrandLogo from '../components/BrandLogo.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import RoleBadge from '../components/RoleBadge.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
+import ProductEditor from '../components/admin/ProductEditor.jsx'
+import { getProductImagePath } from '../utils/productImages.js'
 import {
-  adjustInventory, createAdminBrand, createAdminCategory, createAdminProduct,
-  createAdminProductVariant, deleteAdminBrand, deleteAdminCategory,
-  deleteAdminProduct, deleteAdminProductVariant, getAdminBrands,
-  getAdminCategories, getAdminInventory, getAdminOrders, getAdminProducts,
-  getAdminProductVariants, getAdminUser, getAdminUsers, getInventoryMovements,
-  updateAdminBrand, updateAdminCategory, updateAdminProduct,
-  updateAdminProductVariant,
+  adjustInventory, createAdminBrand, createAdminCategory, deleteAdminBrand,
+  deleteAdminCategory, deleteAdminProduct, getAdminBrands, getAdminCategories,
+  getAdminInventory, getAdminOrders, getAdminProducts, getAdminUser, getAdminUsers,
+  getInventoryMovements, updateAdminBrand, updateAdminCategory, updateAdminProduct,
 } from '../services/adminService.js'
 import { resolveImageUrl } from '../services/imageService.js'
 import { confirmAdminOrder, cancelAdminOrder } from '../services/orderService.js'
@@ -340,25 +339,34 @@ function DashboardSection({ data, onNavigate }) {
 }
 
 const PRODUCT_STATUS_LABELS = {
-  draft: 'Brouillon (non visible)',
-  active: 'Publié',
+  draft: 'Brouillon',
+  active: 'Visible',
   inactive: 'Masqué',
   archived: 'Archivé',
 }
 
+/** A hidden product can be shown once it has a visible default price (variant). */
+function canPublish(product) {
+  return (product.product_variants || []).some((variant) => variant.is_default && variant.status === 'active')
+}
+
+function priceLabel(product) {
+  const prices = (product.product_variants || []).filter((variant) => variant.status === 'active')
+    .map((variant) => Number(variant.price_tnd)).filter((price) => price > 0)
+  if (!prices.length) return 'Sans prix'
+  const low = Math.min(...prices)
+  const high = Math.max(...prices)
+  return low === high ? `${low.toFixed(3)} TND` : `${low.toFixed(3)} – ${high.toFixed(3)} TND`
+}
+
 function ProductsSection({ products = [], onReload }) {
-  const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', slug: '', description: '', category_id: '', brand_id: '', price_tnd: '', stock: '', status: 'draft' })
+  const [editing, setEditing] = useState(null) // null: closed, 'new', or a product
   const [categories, setCategories] = useState([])
   const [brands, setBrands] = useState([])
-  const [variants, setVariants] = useState([])
-  const [variantForm, setVariantForm] = useState({
-    name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active', model: '',
-  })
-  const [editingVariant, setEditingVariant] = useState(null)
-  const [variantError, setVariantError] = useState('')
+  const [query, setQuery] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [publishing, setPublishing] = useState(false)
 
   useEffect(() => {
     Promise.all([getAdminCategories(), getAdminBrands()])
@@ -369,172 +377,44 @@ function ProductsSection({ products = [], onReload }) {
       .catch(() => {})
   }, [])
 
-  async function loadVariants(productId) {
-    if (!productId) {
-      setVariants([])
-      return
-    }
-    try {
-      const response = await getAdminProductVariants(productId)
-      setVariants(response.data || response || [])
-    } catch (requestError) {
-      setVariantError(requestError.message || 'Impossible de charger les variantes.')
-    }
-  }
+  const hidden = products.filter((product) => product.status !== 'active')
+  const publishable = hidden.filter(canPublish)
+  const search = query.trim().toLowerCase()
+  const shown = search
+    ? products.filter((product) => [product.name, product.slug, product.brands?.name, product.categories?.name]
+      .some((value) => String(value || '').toLowerCase().includes(search)))
+    : products
 
-  async function startEdit(product) {
-    setEditing(product)
+  function open(target) {
+    setMessage('')
     setError('')
-    let loadedVariants = []
-    try {
-      const response = await getAdminProductVariants(product.id)
-      loadedVariants = response.data || response || []
-      setVariants(loadedVariants)
-    } catch (requestError) {
-      setVariantError(requestError.message || 'Impossible de charger les variantes.')
-    }
-    const primaryVariant = loadedVariants.length === 1 ? loadedVariants[0] : null
-    setForm({
-      name: product.name || '',
-      slug: product.slug || '',
-      description: product.description || '',
-      category_id: product.category_id || '',
-      brand_id: product.brand_id || '',
-      price_tnd: primaryVariant ? primaryVariant.price_tnd : '',
-      stock: primaryVariant ? primaryVariant.on_hand : '',
-      status: product.status || 'draft',
-    })
+    setEditing(target)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  async function saveVariant(event) {
-    event.preventDefault()
-    if (!editing) return
-    const payload = {
-      name: variantForm.name,
-      sku: variantForm.sku,
-      price_tnd: Number(variantForm.price_tnd),
-      stock: Number(variantForm.stock),
-      is_default: variantForm.is_default,
-      status: variantForm.status,
-      attributes: { model: variantForm.model || 'Standard' },
-    }
-    setVariantError('')
-    try {
-      if (editingVariant) {
-        await updateAdminProductVariant(editingVariant.id, payload)
-      } else {
-        await createAdminProductVariant(editing.id, payload)
-      }
-      setEditingVariant(null)
-      setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active', model: '' })
-      await loadVariants(editing.id)
-    } catch (requestError) {
-      setVariantError(requestError.message || 'Impossible d’enregistrer la variante.')
-    }
-  }
-
-  async function removeVariant(id) {
-    if (!window.confirm('Supprimer cette variante ?')) return
-    try {
-      await deleteAdminProductVariant(id)
-      await loadVariants(editing.id)
-    } catch (requestError) {
-      setVariantError(requestError.message || 'Impossible de supprimer la variante.')
-    }
-  }
-
-  function startEditVariant(variant) {
-    setEditingVariant(variant)
-    setVariantForm({
-      name: variant.name || '',
-      sku: variant.sku || '',
-      price_tnd: variant.price_tnd ?? '',
-      stock: Number(variant.on_hand ?? 0),
-      is_default: Boolean(variant.is_default),
-      status: variant.status || 'active',
-      model: variant.attributes?.model || 'Standard',
-    })
-    setVariantError('')
-  }
-
-  async function save(event) {
-    event.preventDefault()
-    const payload = {
-      name: form.name,
-      slug: form.slug,
-      description: form.description,
-      ...(form.category_id ? { category_id: form.category_id } : {}),
-      ...(form.brand_id ? { brand_id: form.brand_id } : {}),
-      // Always saved as draft first: the database refuses an active product
-      // without an active default variant, which is created just after.
-      ...(!editing ? { status: 'draft' } : {}),
-    }
+  async function publishAll() {
+    if (!window.confirm(`Rendre visibles ${publishable.length} produit(s) dans la boutique ?`)) return
+    setPublishing(true)
     setError('')
     setMessage('')
-    try {
-      let savedProduct = editing
-      if (editing) {
-        await updateAdminProduct(editing.id, payload)
-        const primaryVariant = variants.length === 1 ? variants[0] : null
-        if (primaryVariant && form.price_tnd !== '' && form.stock !== '') {
-          await updateAdminProductVariant(primaryVariant.id, {
-            price_tnd: Number(form.price_tnd),
-            stock: Number(form.stock),
-          })
-        } else if (!primaryVariant && variants.length === 0 && form.price_tnd !== '' && form.stock !== '') {
-          await createAdminProductVariant(editing.id, {
-            name: 'Standard',
-            sku: form.slug || editing.slug,
-            price_tnd: Number(form.price_tnd),
-            stock: Number(form.stock),
-            is_default: true,
-            status: 'active',
-          })
-        }
-        await loadVariants(editing.id)
-      } else {
-        const response = await createAdminProduct(payload)
-        const createdProduct = response?.data || response
-        savedProduct = createdProduct
-        setEditing(createdProduct)
-        setForm({
-          name: createdProduct.name || payload.name,
-          slug: createdProduct.slug || payload.slug,
-          description: createdProduct.description || payload.description || '',
-          category_id: createdProduct.category_id || payload.category_id || '',
-          brand_id: createdProduct.brand_id || payload.brand_id || '',
-          price_tnd: form.price_tnd,
-          stock: form.stock,
-          status: form.status,
-        })
-        if (form.price_tnd !== '' && form.stock !== '') {
-          await createAdminProductVariant(createdProduct.id, {
-            name: 'Standard',
-            sku: createdProduct.slug || payload.slug,
-            price_tnd: Number(form.price_tnd),
-            stock: Number(form.stock),
-            is_default: true,
-            status: 'active',
-          })
-        }
-        await loadVariants(createdProduct.id)
-      }
-      if (form.status && form.status !== savedProduct.status) {
-        const updated = await updateAdminProduct(savedProduct.id, { status: form.status })
-        setEditing(updated?.data || updated || { ...savedProduct, status: form.status })
-      }
-      setMessage(form.status === 'active' ? 'Produit enregistré et publié.' : 'Produit enregistré.')
-      onReload()
-    } catch (requestError) {
-      setError(requestError.message || 'Impossible d’enregistrer le produit.')
-      onReload()
-    }
+    const results = await Promise.allSettled(publishable.map((product) => updateAdminProduct(product.id, { status: 'active' })))
+    const failed = results.filter((result) => result.status === 'rejected').length
+    const skipped = hidden.length - publishable.length
+    setMessage([
+      `${results.length - failed} produit(s) publié(s).`,
+      failed ? `${failed} échec(s).` : '',
+      skipped ? `${skipped} produit(s) sans prix visible n’ont pas été publiés : ouvrez-les pour ajouter un prix.` : '',
+    ].filter(Boolean).join(' '))
+    setPublishing(false)
+    onReload()
   }
 
-  async function remove(id) {
-    if (!window.confirm('Supprimer ce produit ?')) return
+  async function remove(product) {
+    if (!window.confirm(`Supprimer « ${product.name} » ? Préférez « Masqué » si le produit a déjà été commandé.`)) return
+    setError('')
     try {
-      await deleteAdminProduct(id)
+      await deleteAdminProduct(product.id)
+      if (editing?.id === product.id) setEditing(null)
       onReload()
     } catch (requestError) {
       setError(requestError.message)
@@ -547,199 +427,62 @@ function ProductsSection({ products = [], onReload }) {
         <div>
           <span className="eyebrow eyebrow-dark">Catalogue</span>
           <h2>Produits</h2>
-          <p>Créez, modifiez ou supprimez les produits du catalogue.</p>
+          <p>{products.length - hidden.length} visible(s) dans la boutique · {hidden.length} masqué(s)</p>
         </div>
-        <span className="count-pill">{products.length}</span>
+        <div className="admin-heading-actions">
+          {publishable.length > 0 && (
+            <button type="button" className="button button-secondary" onClick={publishAll} disabled={publishing}>
+              {publishing ? 'Publication…' : `Tout publier (${publishable.length})`}
+            </button>
+          )}
+          <button type="button" className="button" onClick={() => open('new')}>＋ Nouveau produit</button>
+        </div>
       </div>
 
-      <div className="admin-panel">
-        <form className="admin-form" onSubmit={save}>
-          <div className="admin-form-grid">
-            <label>
-              Catégorie
-              <select required={!editing} value={form.category_id} onChange={(event) => setForm({ ...form, category_id: event.target.value })}>
-                <option value="">Choisir une catégorie</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>{category.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Marque
-              <select required={!editing} value={form.brand_id} onChange={(event) => setForm({ ...form, brand_id: event.target.value })}>
-                <option value="">Choisir une marque</option>
-                {brands.map((brand) => (
-                  <option key={brand.id} value={brand.id}>{brand.name}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Prix principal (TND)
-              <input
-                type="number"
-                step="0.001"
-                min="0"
-                placeholder="0.000"
-                value={form.price_tnd}
-                disabled={variants.length > 1}
-                onChange={(event) => setForm({ ...form, price_tnd: event.target.value })}
-              />
-              {variants.length > 1 && <small>Plusieurs variantes : utilisez la section Variantes.</small>}
-            </label>
-            <label>
-              Stock principal
-              <input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="0"
-                value={form.stock}
-                disabled={variants.length > 1}
-                onChange={(event) => setForm({ ...form, stock: event.target.value })}
-              />
-            </label>
-            <label>
-              Nom
-              <input required placeholder="Nom du produit" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-            </label>
-            <label>
-              Slug
-              <input required placeholder="nom-du-produit" value={form.slug} onChange={(event) => setForm({ ...form, slug: event.target.value })} />
-            </label>
-            <label>
-              Statut
-              <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
-                {Object.entries(PRODUCT_STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              {form.status === 'active' && <small>Visible dans la boutique (une variante active par défaut est requise).</small>}
-            </label>
-            <label className="admin-form-wide">
-              Description
-              <textarea placeholder="Description du produit" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
-            </label>
-          </div>
-          <div className="admin-form-actions">
-            <button className="button" type="submit">{editing ? 'Modifier' : 'Créer'}</button>
-            {editing && <button type="button" onClick={() => { setEditing(null); setVariants([]); setEditingVariant(null); setForm({ name: '', slug: '', description: '', category_id: '', brand_id: '', price_tnd: '', stock: '', status: 'draft' }); setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active' }) }}>Annuler</button>}
-          </div>
-          {error && <p className="form-message is-error" role="alert">{error}</p>}
-          {message && !error && <p className="form-message is-success" role="status">{message}</p>}
-        </form>
-      </div>
+      {error && <p className="form-message is-error" role="alert">{error}</p>}
+      {message && <p className="form-message is-success" role="status">{message}</p>}
 
       {editing && (
-        <div className="admin-panel">
-          <div className="admin-panel-heading">
-            <div>
-              <span className="eyebrow eyebrow-dark">Variantes</span>
-              <h3>Variantes de {editing.name}</h3>
-            </div>
-            <span className="count-pill">{variants.length}</span>
-          </div>
-
-          <form className="admin-form" onSubmit={saveVariant}>
-            <div className="admin-form-grid">
-              <label>
-                Nom
-                <input required placeholder="Nom de la variante" value={variantForm.name} onChange={(event) => setVariantForm({ ...variantForm, name: event.target.value })} />
-              </label>
-              <label>
-                SKU
-                <input required placeholder="SKU" value={variantForm.sku} onChange={(event) => setVariantForm({ ...variantForm, sku: event.target.value })} />
-              </label>
-              <label>
-                Prix (TND)
-                <input required type="number" step="0.001" min="0" placeholder="0.000" value={variantForm.price_tnd} onChange={(event) => setVariantForm({ ...variantForm, price_tnd: event.target.value })} />
-              </label>
-              <label>
-                Stock
-                <input required type="number" step="1" min="0" value={variantForm.stock} onChange={(event) => setVariantForm({ ...variantForm, stock: event.target.value })} />
-              </label>
-              <label>
-                Statut
-                <select value={variantForm.status} onChange={(event) => setVariantForm({ ...variantForm, status: event.target.value })}>
-                  <option value="active">active</option>
-                  <option value="draft">draft</option>
-                  <option value="inactive">inactive</option>
-                  <option value="archived">archived</option>
-                </select>
-              </label>
-              <label>
-                Modèle
-                <input placeholder="Gear, Star, 15K..." value={variantForm.model} onChange={(event) => setVariantForm({ ...variantForm, model: event.target.value })} />
-              </label>
-              <label className="checkbox-field">
-                <input type="checkbox" checked={variantForm.is_default} onChange={(event) => setVariantForm({ ...variantForm, is_default: event.target.checked })} />
-                Variante par défaut
-              </label>
-            </div>
-            <div className="admin-form-actions">
-              <button className="button" type="submit">{editingVariant ? 'Modifier la variante' : 'Ajouter la variante'}</button>
-              {editingVariant && (
-                <button type="button" onClick={() => { setEditingVariant(null); setVariantForm({ name: '', sku: '', price_tnd: '', stock: 0, is_default: false, status: 'active' }) }}>
-                  Annuler
-                </button>
-              )}
-            </div>
-            {variantError && <p className="form-message is-error" role="alert">{variantError}</p>}
-          </form>
-
-          {variants.length === 0 ? (
-            <p className="notice">Aucune variante enregistrée.</p>
-          ) : (
-            <div className="admin-table">
-              <div className="admin-row admin-variant-row admin-row-head">
-                <span>Nom</span>
-                <span>SKU</span>
-                <span>Prix</span>
-                <span>Stock</span>
-                <span>Disponible</span>
-                <span>Actions</span>
-              </div>
-              {variants.map((variant) => (
-                <div className="admin-row admin-variant-row" key={variant.id}>
-                  <span data-label="Nom">
-                    <strong>{variant.name}</strong>
-                    {variant.is_default && <small>Par défaut</small>}
-                  </span>
-                  <span data-label="SKU">{variant.sku}</span>
-                  <span data-label="Prix">{Number(variant.price_tnd).toFixed(3)} TND</span>
-                  <span data-label="Stock">{variant.on_hand}</span>
-                  <span data-label="Disponible">{variant.available}</span>
-                  <span className="admin-row-actions" data-label="Actions">
-                    <button type="button" onClick={() => startEditVariant(variant)}>Modifier</button>
-                    <button type="button" className="danger-text" onClick={() => removeVariant(variant.id)}>Supprimer</button>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductEditor
+          key={editing === 'new' ? 'new' : editing.id}
+          product={editing === 'new' ? null : editing}
+          categories={categories}
+          brands={brands}
+          onClose={() => setEditing(null)}
+          onSaved={onReload}
+        />
       )}
 
-      {products.length === 0 ? (
-        <p className="notice">Aucun produit enregistré.</p>
+      <div className="admin-toolbar">
+        <input type="search" placeholder="Rechercher un produit, une marque, une catégorie…" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Rechercher un produit" />
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="notice">{products.length ? 'Aucun produit ne correspond à la recherche.' : 'Aucun produit enregistré.'}</p>
       ) : (
-        <div className="admin-table">
-          <div className="admin-row admin-products-row admin-row-head">
-            <span>Nom</span>
-            <span>Slug</span>
-            <span>Actions</span>
-          </div>
-          {products.map((product) => (
-            <div className="admin-row admin-products-row" key={product.id}>
-              <span data-label="Nom">
+        <div className="product-admin-list">
+          {shown.map((product) => (
+            <article className={`product-admin-card${editing?.id === product.id ? ' is-editing' : ''}`} key={product.id}>
+              <ImageWithFallback
+                src={resolveImageUrl(getProductImagePath(product))}
+                alt=""
+                className="product-admin-thumb"
+                fallbackClassName="product-admin-thumb product-admin-thumb-empty"
+                loading="lazy"
+              />
+              <div className="product-admin-info">
                 <strong>{product.name}</strong>
-                <small>{PRODUCT_STATUS_LABELS[product.status] || product.status}</small>
+                <small>{[product.brands?.name, product.categories?.name].filter(Boolean).join(' · ') || '—'}</small>
+                <small>{priceLabel(product)} · {(product.product_variants || []).length} variante(s)</small>
+              </div>
+              <span className={`visibility-pill ${product.status === 'active' ? 'is-visible' : ''}`}>
+                {product.status === 'active' ? 'Visible' : (PRODUCT_STATUS_LABELS[product.status] || 'Masqué')}
               </span>
-              <span data-label="Slug">{product.slug}</span>
-              <span className="admin-row-actions" data-label="Actions">
-                <button type="button" onClick={() => startEdit(product)}>Modifier</button>
-                <button type="button" className="danger-text" onClick={() => remove(product.id)}>Supprimer</button>
+              <span className="admin-row-actions">
+                <button type="button" className="button button-small" onClick={() => open(product)}>Modifier</button>
+                <button type="button" className="danger-text" onClick={() => remove(product)}>Supprimer</button>
               </span>
-            </div>
+            </article>
           ))}
         </div>
       )}

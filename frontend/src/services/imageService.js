@@ -1,6 +1,6 @@
 const imageBaseUrl = import.meta.env.VITE_IMAGE_BASE_URL
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const storageBucket = import.meta.env.VITE_STORAGE_BUCKET || 'product-images'
+export const storageBucket = import.meta.env.VITE_STORAGE_BUCKET || 'product-images'
 
 /**
  * Turn an image reference into a URL the browser can load.
