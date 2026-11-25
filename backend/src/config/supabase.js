@@ -61,7 +61,11 @@ function createUserSupabase(accessToken) {
   // Inject the JWT into the in-memory session so the SDK sends it on RPCs.
   // A fake refresh token is fine here — persistSession is false and we never
   // call refreshSession() on this client.
+  // setSession is async: handle its rejection (e.g. an expired token) so it
+  // cannot crash the process as an unhandled rejection. The global
+  // Authorization header still applies and PostgREST rejects bad tokens.
   client.auth.setSession({ access_token: accessToken, refresh_token: 'no-refresh' })
+    .catch(() => {})
   return client
 }
 

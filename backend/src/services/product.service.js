@@ -24,9 +24,12 @@ class ProductService {
    * @returns {object} Public product representation.
    */
   toPublicProduct(product) {
+    const images = this.toPublicImages(product.product_images)
     return {
       ...product,
-      image_paths: (product.product_images || []).map((image) => image.storage_path),
+      product_images: images,
+      // Product-level images first (variant_id = null), each group by sort_order.
+      image_paths: [...new Set(images.map((image) => image.storage_path))],
       variants: (product.product_variants || []).map((variant) => {
         const inventory = Array.isArray(variant.inventory) ? variant.inventory[0] : variant.inventory
         const { inventory: unusedInventory, ...publicVariant } = variant
@@ -37,6 +40,28 @@ class ProductService {
         }
       }),
     }
+  }
+
+  /**
+   * Normalise image rows: legacy rows may only have a Cloudinary secure_url,
+   * and some storage paths contain stray whitespace. Rows without any usable
+   * reference are dropped. Product-level images come before variant images.
+   * @param {object[]} [images] product_images rows.
+   * @returns {object[]}
+   */
+  toPublicImages(images = []) {
+    return (images || [])
+      .map((image) => ({
+        ...image,
+        storage_path: String(image.storage_path || image.secure_url || '').trim(),
+      }))
+      .filter((image) => image.storage_path)
+      .sort((left, right) => {
+        const leftVariant = left.variant_id ? 1 : 0
+        const rightVariant = right.variant_id ? 1 : 0
+        if (leftVariant !== rightVariant) return leftVariant - rightVariant
+        return Number(left.sort_order || 0) - Number(right.sort_order || 0)
+      })
   }
 
   /**

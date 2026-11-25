@@ -2,31 +2,39 @@ const orderService = require('../services/order.service')
 const { bodyOf, userIdOf, sendSuccess } = require('./_controllerUtils')
 
 /**
- * Authenticated order HTTP handlers.
+ * Order HTTP handlers (checkout is open to guests).
  */
 module.exports = {
   /**
-   * Create an order.
+   * Create an order for the authenticated customer, or a guest order.
    * @param {import('express').Request} req Express request.
    * @param {import('express').Response} res Express response.
    * @param {import('express').NextFunction} next Express next function.
    */
   async createOrder(req, res, next) {
     try {
-      // ── DEBUG JWT FLOW ────────────────────────────────────────────────────
-      console.log('[createOrder] req.user          :', req.user)
-      console.log('[createOrder] Authorization header:', req.headers.authorization)
-      console.log('[createOrder] authenticated user id:', req.user?.id)
-      console.log('[createOrder] req.supabase exists :', Boolean(req.supabase))
-      // ─────────────────────────────────────────────────────────────────────
       const data = await orderService.createOrder({
         ...bodyOf(req),
         profileId: userIdOf(req),
         userSupabase: req.supabase,
         idempotencyKey: req.get('Idempotency-Key'),
-        requestHash: req.get('X-Request-Hash'),
       })
       return sendSuccess(res, data, 201)
+    } catch (error) {
+      return next(error)
+    }
+  },
+
+  /**
+   * Look up a guest order with its number and access token.
+   * @param {import('express').Request} req Express request.
+   * @param {import('express').Response} res Express response.
+   * @param {import('express').NextFunction} next Express next function.
+   */
+  async lookupGuestOrder(req, res, next) {
+    try {
+      const data = await orderService.getGuestOrder(bodyOf(req))
+      return sendSuccess(res, data)
     } catch (error) {
       return next(error)
     }

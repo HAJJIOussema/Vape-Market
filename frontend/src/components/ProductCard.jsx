@@ -2,11 +2,12 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import ImageWithFallback from './ImageWithFallback.jsx'
 import { resolveImageUrl } from '../services/imageService.js'
+import { getProductImagePath } from '../utils/productImages.js'
 
 function ProductCard({ product, index = 0 }) {
   const reduceMotion = useReducedMotion()
   const variant = product.variants?.[0]
-  const imagePath = product.image_paths?.[0]
+  const imagePath = getProductImagePath(product)
   const brandName = product.brands?.name || product.brand?.name || product.brand_name || product.brand_id
   const categoryName = product.categories?.name || product.category?.name || product.category_name || product.category_id
   const availableStock = (product.variants || []).some((item) => item.in_stock)
@@ -40,6 +41,7 @@ function ProductCard({ product, index = 0 }) {
             className="product-image"
             src={resolveImageUrl(imagePath)}
             alt={product.name}
+            loading="lazy"
             fallbackClassName="product-image product-image-fallback"
             fallbackLabel={`Image de ${product.name}`}
           />

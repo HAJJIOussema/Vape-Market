@@ -440,8 +440,17 @@ paths:
         '401': { $ref: '#/components/responses/UnauthorizedError' }
     post:
       tags: [Orders]
-      summary: Create an authenticated cash-on-delivery order
+      summary: Create a cash-on-delivery order (account or guest)
+      description: >-
+        Authentication is optional. With a valid Bearer token the order is
+        attached to the account; without an Authorization header a guest order
+        is created and the response includes a one-time `guest_access_token`
+        (only its SHA-256 hash is stored). An invalid token returns 401.
+        Prices, totals and shipping cost are computed by the server.
       operationId: createOrder
+      security:
+        - {}
+        - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -459,6 +468,31 @@ paths:
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '409': { $ref: '#/components/responses/ConflictError' }
         '422': { $ref: '#/components/responses/BusinessError' }
+  /orders/guest/lookup:
+    post:
+      tags: [Orders]
+      summary: Look up a guest order with its number and access token
+      operationId: lookupGuestOrder
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [order_number, access_token]
+              properties:
+                order_number: { type: string, example: VM-1A2B3C4D5E6F }
+                access_token: { type: string, minLength: 20, maxLength: 128 }
+      responses:
+        '200':
+          description: Guest order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
   /orders/{orderId}:
     parameters:
       - $ref: '#/components/parameters/OrderId'

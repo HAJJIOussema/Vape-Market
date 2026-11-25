@@ -11,6 +11,8 @@ import RegisterPage from './pages/RegisterPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
 import OrdersPage from './pages/OrdersPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
+import OrderConfirmationPage from './pages/OrderConfirmationPage.jsx'
+import GuestOrderLookupPage from './pages/GuestOrderLookupPage.jsx'
 import { CartProvider } from './context/CartContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { LanguageProvider } from './context/LanguageContext.jsx'
@@ -54,6 +56,8 @@ function RoutedApp() {
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/marques" element={<BrandsPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="/commande/confirmation" element={<OrderConfirmationPage />} />
+          <Route path="/suivi-commande" element={<GuestOrderLookupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>

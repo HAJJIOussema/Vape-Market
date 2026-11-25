@@ -21,6 +21,7 @@ function Footer() {
             <span className="footer-heading">Compte</span>
             <Link to="/account">Mon compte</Link>
             <Link to="/account/orders">Mes commandes</Link>
+            <Link to="/suivi-commande">Suivre une commande</Link>
             <Link to="/login">Connexion</Link>
           </div>
         </div>

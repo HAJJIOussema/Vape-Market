@@ -6,7 +6,8 @@ import { getProductBySlug } from '../services/productService.js'
 import { useCart } from '../context/useCart.js'
 import ImageWithFallback from '../components/ImageWithFallback.jsx'
 import { resolveImageUrl } from '../services/imageService.js'
-import { getFlavorArtworkPath, getFlavorColor, getFlavorTheme } from '../utils/flavor.js'
+import { getFlavorColor, getFlavorTheme } from '../utils/flavor.js'
+import { getDisplayImagePath, getVariantImagePath } from '../utils/productImages.js'
 
 function ProductDetailsPage() {
   const { slug } = useParams()
@@ -56,7 +57,6 @@ function ProductDetailsPage() {
   }
 
   const variants = product.variants || []
-  const productImages = product.product_images || product.images || []
   const models = [...new Set(variants.map((item) => item.attributes?.model || 'Standard'))]
   const activeModel = selectedModel && models.includes(selectedModel) ? selectedModel : models[0] || null
   const modelVariants = activeModel
@@ -64,23 +64,12 @@ function ProductDetailsPage() {
     : variants
   const selectedVariant = modelVariants.find((item) => item.id === selectedVariantId) || modelVariants[0] || null
   const variant = selectedVariant
-  const productImage = productImages.find((image) => !image.variant_id)
-  const productImagePath = productImage?.storage_path || productImage?.secure_url
-  const imagePath = getVariantImagePath(selectedVariant) || productImagePath || product.image_paths?.[0]
+  const imagePath = getDisplayImagePath(product, selectedVariant)
   const flavorColor = getFlavorColor(selectedVariant?.name)
   const flavorTheme = getFlavorTheme(selectedVariant?.name)
   const brandName = product.brands?.name || product.brand?.name || product.brand_name || product.brand_id
   const categoryName = product.categories?.name || product.category?.name || product.category_name || product.category_id
   const availableStock = Boolean(selectedVariant?.in_stock)
-
-  function getVariantImagePath(item) {
-    const variantImage = productImages.find((image) => image.variant_id === item?.id)
-    return variantImage?.storage_path || variantImage?.secure_url || item?.image_path || getFlavorArtworkPath(product, item)
-  }
-
-  function resolveProductImage(path) {
-    return path?.startsWith('/') ? path : resolveImageUrl(path)
-  }
 
   function selectModel(model) {
     setSelectedModel(model)
@@ -115,7 +104,7 @@ function ProductDetailsPage() {
           <ImageWithFallback
             key={`${selectedVariant?.id || 'default'}-${imagePath || 'fallback'}`}
             className="product-details-image"
-            src={resolveProductImage(imagePath)}
+            src={resolveImageUrl(imagePath)}
             alt={`${product.name}${selectedVariant?.name ? ` — ${selectedVariant.name}` : ''}`}
             fallbackClassName="product-details-image product-image-placeholder"
             fallbackLabel={`Image de ${product.name}`}
@@ -152,7 +141,7 @@ function ProductDetailsPage() {
           {selectedVariant?.sku && <p className="product-sku">SKU : {selectedVariant.sku}</p>}
 
           <div className="product-purchase">
-            <button className="button" type="button" disabled={!availableStock} onClick={() => addItem(product, variant)}>
+            <button className="button" type="button" disabled={!availableStock} onClick={() => addItem(product, variant, imagePath)}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M6.5 8.5h11l1 11h-13l1-11Z" />
                 <path d="M9 8.5V6.75a3 3 0 0 1 6 0V8.5" />
@@ -202,7 +191,7 @@ function ProductDetailsPage() {
                 <ul className="variant-list">
                 {modelVariants.map((item) => {
                   const isSelected = item.id === selectedVariant?.id
-                  const itemArtwork = getVariantImagePath(item)
+                  const itemArtwork = getVariantImagePath(product, item)
                   const itemTheme = getFlavorTheme(item.name)
                   return (
                     <li key={item.id}>
@@ -220,7 +209,7 @@ function ProductDetailsPage() {
                           {itemArtwork ? (
                             <img
                               key={itemArtwork}
-                              src={resolveProductImage(itemArtwork)}
+                              src={resolveImageUrl(itemArtwork)}
                               alt=""
                               loading="lazy"
                               width="54"

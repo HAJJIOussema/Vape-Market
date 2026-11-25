@@ -16,7 +16,9 @@ const createOrderSchema = z.object({
     quantity: z.number().int({ message: 'La quantité doit être un entier.' })
       .min(1, { message: 'La quantité doit être au moins égale à 1.' })
       .max(999, { message: 'La quantité ne peut pas dépasser 999.' }),
-  }).strict()).min(1, { message: 'Le panier ne peut pas être vide.' }),
+  }).strict())
+    .min(1, { message: 'Le panier ne peut pas être vide.' })
+    .max(50, { message: 'Le panier ne peut pas contenir plus de 50 lignes.' }),
   customer_email: z.string().trim().email({ message: 'L’adresse e-mail est invalide.' }),
   customer_phone: tunisianPhone,
   shipping_address: shippingAddress,

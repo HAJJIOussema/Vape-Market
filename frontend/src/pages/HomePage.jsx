@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import ImageWithFallback from '../components/ImageWithFallback.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import ProductGrid from '../components/ProductGrid.jsx'
 import { getProducts } from '../services/productService.js'
@@ -153,10 +154,13 @@ function HomePage({ onNavigate }) {
                 viewport={{ once: true, margin: '-60px' }}
                 transition={{ duration: 0.45, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
               >
-                <img
+                <ImageWithFallback
                   className="brand-showcase-image"
                   src={brand.logo}
                   alt={brand.name}
+                  loading="lazy"
+                  fallbackClassName="brand-showcase-image brand-showcase-fallback"
+                  fallbackLabel={`Logo ${brand.name}`}
                 />
                 <strong>{brand.name}</strong>
                 <span>{brand.count} produit{brand.count > 1 ? 's' : ''}</span>

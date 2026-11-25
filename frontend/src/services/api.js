@@ -12,44 +12,56 @@ async function getAccessToken() {
   return data.session?.access_token || null
 }
 
-export async function apiRequest(path, options = {}) {
-  const accessToken = await getAccessToken()
-  const request = {
-    url: `${API_URL}${path}`,
-    method: options.method || 'GET',
-    body: options.body,
+function parseJson(text) {
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
   }
-  console.log(request)
+}
+
+/**
+ * Call the backend API.
+ * @param {string} path API path, e.g. "/products".
+ * @param {RequestInit & {auth?: boolean}} [options] fetch options; auth: false
+ *   never sends the session token.
+ * @returns {Promise<any>} Parsed JSON payload (null for 204).
+ * @throws {Error & {status?: number, code?: string, details?: object[]}}
+ */
+export async function apiRequest(path, options = {}) {
+  const { auth = true, headers: extraHeaders, ...fetchOptions } = options
+  const accessToken = auth ? await getAccessToken() : null
   const headers = {
     'Content-Type': 'application/json',
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    ...options.headers,
+    ...extraHeaders,
   }
+
+  let response
   try {
-    const response = await fetch(request.url, { ...options, headers })
-    console.log(response)
-    if (response.status === 204) return null
-    const responseText = await response.text()
-    console.error(response.status)
-    console.error(responseText)
-    const payload = responseText ? (() => {
-      try {
-        return JSON.parse(responseText)
-      } catch {
-        return null
-      }
-    })() : null
-    console.log(payload)
-    console.error(payload)
-    if (!response.ok) {
-      const error = new Error(payload?.error?.message || `API request failed: ${response.status}`)
-      error.status = response.status
-      error.code = payload?.error?.code
-      throw error
-    }
-    return payload
-  } catch (error) {
-    console.log(error)
+    response = await fetch(`${API_URL}${path}`, { ...fetchOptions, headers })
+  } catch (networkError) {
+    const error = new Error('Le serveur est injoignable. Vérifiez votre connexion et réessayez.')
+    error.cause = networkError
+    error.status = 0
+    error.code = 'NETWORK_ERROR'
     throw error
   }
+
+  if (response.status === 204) return null
+  const payload = parseJson(await response.text())
+
+  if (!response.ok) {
+    const details = Array.isArray(payload?.error?.details) ? payload.error.details : undefined
+    const message = details?.length
+      ? details.map((detail) => detail.message).join(' ')
+      : payload?.error?.message || `La requête a échoué (${response.status}).`
+    const error = new Error(message)
+    error.status = response.status
+    error.code = payload?.error?.code
+    error.details = details
+    throw error
+  }
+  return payload
 }

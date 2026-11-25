@@ -195,6 +195,77 @@ describe('Cart and orders', () => {
   })
 })
 
+describe('Guest checkout', () => {
+  const guestOrder = {
+    items: [{ variant_id: variantId, quantity: 1 }],
+    customer_email: 'guest@example.com',
+    customer_phone: '20123456',
+    shipping_address: {
+      recipient_name: 'Invité',
+      phone: '20123456',
+      address_line: '1 Rue Test',
+    },
+  }
+
+  it('creates an order without an account', async () => {
+    vi.spyOn(orderService, 'createOrder').mockResolvedValue({
+      id: 'order-1', status: 'pending', guest_access_token: 'token',
+    })
+
+    const response = await request(app).post('/api/v1/orders')
+      .set('Idempotency-Key', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')
+      .send(guestOrder)
+
+    expect(response.status).toBe(201)
+    expect(orderService.createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      profileId: undefined,
+      userSupabase: undefined,
+    }))
+    expect(adminSupabase.auth.getUser).not.toHaveBeenCalled()
+  })
+
+  it('rejects an invalid token instead of silently creating a guest order', async () => {
+    adminSupabase.auth.getUser = vi.fn().mockResolvedValue({ data: { user: null }, error: { message: 'expired' } })
+    vi.spyOn(orderService, 'createOrder')
+
+    const response = await request(app).post('/api/v1/orders')
+      .set({ Authorization: 'Bearer expired-token' })
+      .set('Idempotency-Key', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')
+      .send(guestOrder)
+
+    expect(response.status).toBe(401)
+    expect(orderService.createOrder).not.toHaveBeenCalled()
+  })
+
+  it('validates guest input before the service', async () => {
+    vi.spyOn(orderService, 'createOrder')
+
+    const response = await request(app).post('/api/v1/orders')
+      .set('Idempotency-Key', 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')
+      .send({ ...guestOrder, customer_email: 'not-an-email', items: [] })
+
+    expect(response.status).toBe(400)
+    expect(orderService.createOrder).not.toHaveBeenCalled()
+  })
+
+  it('still requires authentication to list orders', async () => {
+    const response = await request(app).get('/api/v1/orders')
+    expect(response.status).toBe(401)
+  })
+
+  it('looks up a guest order with its number and token', async () => {
+    vi.spyOn(orderService, 'getGuestOrder').mockResolvedValue({ id: 'order-1', order_number: 'VM-AAAAAAAAAAAA' })
+
+    const response = await request(app).post('/api/v1/orders/guest/lookup')
+      .send({ order_number: 'vm-aaaaaaaaaaaa', access_token: 'abcdefghijklmnopqrstuvwxyz012345' })
+
+    expect(response.status).toBe(200)
+    expect(orderService.getGuestOrder).toHaveBeenCalledWith({
+      order_number: 'VM-AAAAAAAAAAAA', access_token: 'abcdefghijklmnopqrstuvwxyz012345',
+    })
+  })
+})
+
 describe('Admin permissions', () => {
   it('denies a customer before reaching the admin controller', async () => {
     const response = await request(app).get('/api/admin/orders').set(authHeader())
