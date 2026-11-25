@@ -3927,6 +3927,41 @@ p {
     width: min(100% - 20px, 1180px);
   }
 
+  /* Logo + language + menu must fit on one line, otherwise the page becomes
+     wider than the phone and every fixed overlay (age check…) is cut off. */
+  .header-inner {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 8px;
+  }
+
+  .brand {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .brand-logo-mark {
+    gap: 8px;
+  }
+
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-wordmark {
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+  }
+
+  .language-switcher {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .language-label {
+    display: none;
+  }
+
   .hero-actions {
     flex-direction: column;
   }
