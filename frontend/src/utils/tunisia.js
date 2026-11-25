@@ -5,7 +5,7 @@ export const TUNISIAN_GOVERNORATES = [
 ]
 
 /**
- * Normalise a Tunisian phone number to the backend format
+ * Normalise a Tunisian phone number to the format accepted by the database
  * (+216XXXXXXXX or XXXXXXXX). Returns '' when it cannot be normalised.
  */
 export function normalizeTunisianPhone(value) {

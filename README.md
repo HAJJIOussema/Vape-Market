@@ -21,8 +21,9 @@ activée avant la validation des obligations légales et réglementaires.
 - **Backend :** aucun serveur à déployer. Le frontend appelle Supabase
   directement (`supabase-js`) ; les règles métier (prix, stock, commandes,
   rôles) sont appliquées dans PostgreSQL par les politiques RLS et des
-  fonctions `SECURITY DEFINER` (`checkout`, `confirm_order`, …). Le dossier
-  `backend/` (Express) n'est plus utilisé par le frontend ;
+  fonctions `SECURITY DEFINER` (`checkout`, `confirm_order`, …). L'ancienne
+  API Express a été supprimée (elle reste dans l'historique Git et sur la
+  branche `old-main`) ;
 - **Données et authentification :** Supabase PostgreSQL, Supabase Auth et RLS ;
 - **Hébergement :** Vercel (site statique) ;
 - **Tests :** Vitest, React Testing Library, Playwright et Postman.
@@ -35,12 +36,11 @@ technique.
 ```text
 VAPE-MARKET/
 ├── frontend/          # application déployée (Vercel)
-├── backend/           # ancienne API Express, plus utilisée
 ├── supabase/
 │   ├── migrations/
+│   ├── tests/
 │   └── seed.sql
-├── docs/
-├── tests/
+├── scripts/           # outils locaux (données de démonstration)
 ├── .gitignore
 ├── README.md
 └── CLAUDE.md

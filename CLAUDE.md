@@ -9,9 +9,10 @@ résultats. Ne pas traiter le projet comme une simple maquette.
 ## Contexte technique
 
 VAPE MARKET est un e-commerce destiné au marché tunisien. La stack prévue est
-React/Vite/Tailwind côté frontend, Node.js/Express côté backend et Supabase
-PostgreSQL/Auth avec Row Level Security côté données. Ces choix restent
-prévisionnels jusqu'à validation de la conception.
+React/Vite/Tailwind côté frontend (déployé sur Vercel), sans serveur Express :
+le frontend appelle directement Supabase PostgreSQL/Auth, et les règles métier
+sont appliquées par Row Level Security et des fonctions SQL `SECURITY DEFINER`.
+Ces choix restent prévisionnels jusqu'à validation de la conception.
 
 ## Méthode de travail
 
